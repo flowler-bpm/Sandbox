@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netzplan-Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --accent:#2563eb; --accent-dark:#1d4ed8;
+    --critical:#dc2626; --critical-bg:#fff1f1; --critical-text:#b91c1c;
+    --bg:#f8fafc; --card:#ffffff; --border:#e2e8f0;
+    --text:#1e293b; --muted:#64748b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text);
+  }
+  header{
+    background:var(--card); border-bottom:1px solid var(--border);
+    padding:20px 28px;
+  }
+  header h1{margin:0 0 4px 0; font-size:22px;}
+  header p{margin:0; color:var(--muted); font-size:14px;}
+  main{max-width:1400px; margin:0 auto; padding:20px 28px 60px;}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:18px 20px; margin-bottom:20px;
+  }
+  .card h2{margin:0 0 12px 0; font-size:15px; display:flex; align-items:center; gap:8px;}
+  .card h2 .step{
+    background:var(--accent); color:#fff; width:22px; height:22px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0;
+  }
+  .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center;}
+  button{
+    background:var(--accent); color:#fff; border:none; border-radius:7px;
+    padding:9px 16px; font-size:13.5px; cursor:pointer; font-weight:500;
+  }
+  button:hover{background:var(--accent-dark);}
+  button.secondary{background:#fff; color:var(--text); border:1px solid var(--border);}
+  button.secondary:hover{background:#f1f5f9;}
+  button.danger{background:#fff; color:var(--critical); border:1px solid #fecaca; padding:4px 8px; font-size:12px;}
+  button.danger:hover{background:var(--critical-bg);}
+  #dropzone{
+    border:2px dashed #cbd5e1; border-radius:10px; padding:28px; text-align:center;
+    color:var(--muted); font-size:14px; cursor:pointer; transition:.15s;
+  }
+  #dropzone.drag{border-color:var(--accent); background:#eff6ff; color:var(--accent-dark);}
+  #dropzone strong{color:var(--text);}
+  #fileInput{display:none;}
+  #messages .msg{
+    padding:9px 12px; border-radius:7px; font-size:13px; margin-bottom:6px;
+  }
+  #messages .error{background:#fef2f2; color:var(--critical-text); border:1px solid #fecaca;}
+  #messages .warning{background:#fffbeb; color:#92400e; border:1px solid #fde68a;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{
+    text-align:left; padding:8px 10px; color:var(--muted); font-weight:600;
+    border-bottom:2px solid var(--border); font-size:12px; text-transform:uppercase; letter-spacing:.02em;
+  }
+  td{padding:5px 8px; border-bottom:1px solid var(--border); vertical-align:middle;}
+  td input{
+    width:100%; border:1px solid transparent; border-radius:5px; padding:6px 7px;
+    font-size:13px; background:transparent; font-family:inherit;
+  }
+  td input:hover{border-color:var(--border);}
+  td input:focus{outline:none; border-color:var(--accent); background:#fff;}
+  td.idcol input{font-weight:600; width:70px;}
+  td.durcol input{width:70px;}
+  td.actioncol{width:36px; text-align:center;}
+  #summaryBar{display:flex; gap:28px; flex-wrap:wrap;}
+  .stat{min-width:120px;}
+  .stat .val{font-size:22px; font-weight:700;}
+  .stat .val.crit{color:var(--critical);}
+  .stat .lbl{font-size:12px; color:var(--muted);}
+  #diagramCard{padding:0; overflow:hidden;}
+  #diagramToolbar{
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+    padding:14px 20px; border-bottom:1px solid var(--border);
+  }
+  #svgHost{
+    width:100%; height:560px; overflow:hidden; background:
+      linear-gradient(#fafbfc,#fafbfc), repeating-linear-gradient(0deg,transparent,transparent 23px,#eef1f5 23px,#eef1f5 24px), repeating-linear-gradient(90deg,transparent,transparent 23px,#eef1f5 23px,#eef1f5 24px);
+    cursor:grab; position:relative;
+  }
+  #svgHost.grabbing{cursor:grabbing;}
+  #svgHost svg{display:block;}
+  #emptyDiagram{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--muted); font-size:14px; text-align:center; padding:20px;
+  }
+  .legend{display:flex; gap:28px; flex-wrap:wrap; font-size:13px;}
+  .legend .col{min-width:220px;}
+  .legend dl{margin:0;}
+  .legend dt{font-weight:700; float:left; width:46px; color:var(--accent-dark);}
+  .legend dd{margin:0 0 4px 64px; color:var(--text);}
+  .swatch{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:6px;}
+  footer{text-align:center; color:var(--muted); font-size:12px; padding:20px;}
+  @media print{
+    header, .card:not(#diagramCard), #diagramToolbar, footer{display:none !important;}
+    body, main{background:#fff; margin:0; padding:0;}
+    #diagramCard{border:none; margin:0;}
+    #svgHost{height:auto; overflow:visible; background:#fff;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Netzplan-Tool</h1>
+  <p>Vorgangsknoten-Netzplan (AON) direkt im Browser erstellen &ndash; aus einer Excel-Tabelle mit Vorg&auml;ngen, Dauern und Abh&auml;ngigkeiten.</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2><span class="step">1</span> Excel-Datei laden</h2>
+    <div id="dropzone">
+      <div><strong>Excel- oder CSV-Datei hierher ziehen</strong> oder klicken zum Ausw&auml;hlen</div>
+      <div style="margin-top:4px; font-size:12.5px;">Erwartete Spalten: Nr. &middot; Vorgang &middot; Dauer (Tage) &middot; Vorg&auml;nger</div>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+    <div class="row" style="margin-top:14px;">
+      <button class="secondary" id="btnTemplate">&#128190; Excel-Vorlage herunterladen</button>
+      <button class="secondary" id="btnExample">&#128218; Beispielprojekt laden</button>
+      <button class="secondary" id="btnAddRow">&#43; Zeile hinzuf&uuml;gen</button>
+    </div>
+  </div>
+
+  <div class="card" id="messagesCard" style="display:none;">
+    <h2>Hinweise</h2>
+    <div id="messages"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">2</span> Vorg&auml;nge pr&uuml;fen &amp; bearbeiten</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:80px;">Nr.</th>
+          <th>Vorgang</th>
+          <th style="width:90px;">Dauer (Tage)</th>
+          <th style="width:160px;">Vorg&auml;nger</th>
+          <th style="width:36px;"></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Projekt&uuml;bersicht</h2>
+    <div id="summaryBar">
+      <div class="stat"><div class="val" id="statDuration">&ndash;</div><div class="lbl">Projektdauer (Tage)</div></div>
+      <div class="stat"><div class="val" id="statTasks">&ndash;</div><div class="lbl">Vorg&auml;nge gesamt</div></div>
+      <div class="stat"><div class="val crit" id="statCritical">&ndash;</div><div class="lbl">Kritische Vorg&auml;nge</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="diagramCard">
+    <div id="diagramToolbar">
+      <div class="row">
+        <button class="secondary" id="btnZoomOut">&minus;</button>
+        <button class="secondary" id="btnZoomReset">100%</button>
+        <button class="secondary" id="btnZoomIn">&plus;</button>
+      </div>
+      <div class="row">
+        <button class="secondary" id="btnExportPng">&#128247; Als PNG exportieren</button>
+        <button class="secondary" id="btnExportPdf">&#128196; Als PDF / drucken</button>
+      </div>
+    </div>
+    <div id="svgHost">
+      <div id="emptyDiagram">Noch kein g&uuml;ltiger Netzplan &ndash; Datei laden oder Beispielprojekt verwenden.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Legende &amp; Notation</h2>
+    <div class="legend">
+      <div class="col">
+        <div style="margin-bottom:10px; font-size:13px;">Jeder Vorgang wird als 5-Felder-Kasten dargestellt:</div>
+        <dl>
+          <dt>FAZ</dt><dd>Fr&uuml;hester Anfangszeitpunkt</dd>
+          <dt>D</dt><dd>Dauer des Vorgangs (Tage)</dd>
+          <dt>FEZ</dt><dd>Fr&uuml;hester Endzeitpunkt</dd>
+          <dt>SAZ</dt><dd>Sp&auml;tester Anfangszeitpunkt</dd>
+          <dt>GP</dt><dd>Gesamtpuffer</dd>
+          <dt>SEZ</dt><dd>Sp&auml;testester Endzeitpunkt</dd>
+        </dl>
+      </div>
+      <div class="col">
+        <div style="margin-bottom:10px;"><span class="swatch" style="background:#dc2626;"></span> Roter Rahmen / rote Pfeile = <strong>kritischer Pfad</strong> (Gesamtpuffer&nbsp;=&nbsp;0)</div>
+        <div style="margin-bottom:10px;"><span class="swatch" style="background:#94a3b8;"></span> Graue Pfeile = unkritische Abh&auml;ngigkeit mit Pufferzeit</div>
+        <div style="color:var(--muted); font-size:12.5px;">Diagramm mit Mausrad zoomen, mit gedr&uuml;ckter Maustaste verschieben.</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>Netzplan-Tool &middot; l&auml;uft vollst&auml;ndig lokal im Browser, keine Daten werden hochgeladen.</footer>
+
+<script>
+(function(){
+"use strict";
+
+const BOX_W = 180, BOX_H = 96, TOP_H = 30, MID_H = 36, BOT_H = 30;
+const GAP_X = 70, GAP_Y = 24, MARGIN = 40;
+
+const EXAMPLE_TASKS = [
+  {id:"A", name:"Projekt vorbereiten",  duration:2, predsRaw:""},
+  {id:"B", name:"Planung",              duration:4, predsRaw:"A"},
+  {id:"C", name:"Genehmigung einholen", duration:5, predsRaw:"A"},
+  {id:"D", name:"Material bestellen",   duration:3, predsRaw:"B"},
+  {id:"E", name:"Bauarbeiten",          duration:6, predsRaw:"B,C"},
+  {id:"F", name:"Lieferung erhalten",   duration:1, predsRaw:"D"},
+  {id:"G", name:"Montage",              duration:4, predsRaw:"E,F"},
+  {id:"H", name:"Abnahme",              duration:2, predsRaw:"G"}
+];
+
+let tasks = [];
+let view = {scale:1, x:0, y:0};
+
+const el = id => document.getElementById(id);
+const tableBody = el("tableBody");
+const svgHost = el("svgHost");
+
+function normalizeHeader(s){
+  return String(s||"").toLowerCase()
+    .replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ß/g,"ss")
+    .trim();
+}
+
+function detectColumns(headerRow){
+  const norm = (headerRow||[]).map(normalizeHeader);
+  const find = (tests) => norm.findIndex(h => tests.some(t => h.includes(t)));
+  let idCol = find(["nr", "id", "code"]);
+  let nameCol = norm.findIndex((h,i) => i!==idCol && (h.includes("vorgang") && !h.includes("vorganger")) || h.includes("bezeichnung") || h.includes("name") || h.includes("aufgabe") || h.includes("task"));
+  let durCol = find(["dauer", "tage", "duration"]);
+  let predCol = find(["vorganger", "predecessor", "abhang"]);
+  const fallback = idCol<0 || nameCol<0 || durCol<0 || predCol<0;
+  if (idCol<0) idCol = 0;
+  if (nameCol<0) nameCol = 1;
+  if (durCol<0) durCol = 2;
+  if (predCol<0) predCol = 3;
+  return {idCol, nameCol, durCol, predCol, fallback};
+}
+
+function parseDuration(v){
+  if (v===undefined || v===null || v==="") return NaN;
+  const s = String(v).trim().replace(",", ".");
+  return parseFloat(s);
+}
+
+function splitPreds(v){
+  if (v===undefined || v===null) return "";
+  return String(v).trim();
+}
+
+function rowsToTasks(rows){
+  const nonEmpty = rows.filter(r => r.some(c => String(c).trim()!==""));
+  if (nonEmpty.length < 1) return {tasks:[], fallback:false};
+  const cols = detectColumns(nonEmpty[0]);
+  const dataRows = nonEmpty.slice(1);
+  const result = dataRows.map(r => ({
+    id: String(r[cols.idCol] ?? "").trim(),
+    name: String(r[cols.nameCol] ?? "").trim(),
+    duration: parseDuration(r[cols.durCol]),
+    predsRaw: splitPreds(r[cols.predCol])
+  })).filter(t => t.id !== "" || t.name !== "");
+  return {tasks: result, fallback: cols.fallback};
+}
+
+// --- CPM / Netzplantechnik: Vorwaerts-/Rueckwaertsrechnung ---
+function computeSchedule(taskList){
+  const errors = [];
+  const warnings = [];
+
+  if (taskList.length === 0){
+    return {ok:false, errors:["Keine Vorgänge vorhanden."], warnings, scheduled:new Map(), projectDuration:0, criticalIds:new Set(), criticalEdges:new Set(), order:[], successors:new Map()};
+  }
+
+  const idMap = new Map(); // lowercase id -> task
+  const seen = new Set();
+  for (const t of taskList){
+    if (t.id === ""){
+      warnings.push("Eine Zeile ohne Nr./ID wurde ignoriert" + (t.name ? ` ("${t.name}")` : "") + ".");
+      continue;
+    }
+    const key = t.id.toLowerCase();
+    if (seen.has(key)){
+      errors.push(`Doppelte ID "${t.id}" gefunden – IDs müssen eindeutig sein.`);
+      continue;
+    }
+    seen.add(key);
+    idMap.set(key, t);
+  }
+  if (errors.length) return {ok:false, errors, warnings, scheduled:new Map(), projectDuration:0, criticalIds:new Set(), criticalEdges:new Set(), order:[], successors:new Map()};
+
+  const validTasks = Array.from(idMap.values());
+  const preds = new Map();   // id -> [resolved ids]
+  const successors = new Map();
+  for (const t of validTasks) successors.set(t.id, []);
+
+  for (const t of validTasks){
+    const raw = splitPreds(t.predsRaw);
+    const parts = raw ? raw.split(/[,;/]+/).map(s=>s.trim()).filter(Boolean) : [];
+    const resolved = [];
+    for (const p of parts){
+      const match = idMap.get(p.toLowerCase());
+      if (!match){
+        warnings.push(`Vorgang "${t.id}": Vorgänger "${p}" wurde nicht gefunden und ignoriert.`);
+        continue;
+      }
+      if (match.id === t.id){
+        warnings.push(`Vorgang "${t.id}": Verweis auf sich selbst wurde ignoriert.`);
+        continue;
+      }
+      resolved.push(match.id);
+    }
+    preds.set(t.id, resolved);
+    for (const p of resolved) successors.get(p).push(t.id);
+
+    let dur = t.duration;
+    if (isNaN(dur)){
+      warnings.push(`Vorgang "${t.id}": Dauer nicht erkannt, 0 Tage angenommen.`);
+      dur = 0;
+    } else if (dur < 0){
+      warnings.push(`Vorgang "${t.id}": negative Dauer wurde als positiver Wert angenommen.`);
+      dur = Math.abs(dur);
+    }
+    t._duration = dur;
+  }
+
+  // Kahn topological sort (cycle detection)
+  const inDegree = new Map(validTasks.map(t => [t.id, preds.get(t.id).length]));
+  const order = [];
+  const queue = validTasks.filter(t => inDegree.get(t.id) === 0).map(t => t.id);
+  while (queue.length){
+    const id = queue.shift();
+    order.push(id);
+    for (const s of successors.get(id)){
+      inDegree.set(s, inDegree.get(s) - 1);
+      if (inDegree.get(s) === 0) queue.push(s);
+    }
+  }
+  if (order.length < validTasks.length){
+    const stuck = validTasks.map(t=>t.id).filter(id => !order.includes(id));
+    errors.push(`Zyklische Abhängigkeit erkannt zwischen: ${stuck.join(", ")}. Ein Netzplan darf keine Kreise enthalten.`);
+    return {ok:false, errors, warnings, scheduled:new Map(), projectDuration:0, criticalIds:new Set(), criticalEdges:new Set(), order:[], successors};
+  }
+
+  const scheduled = new Map();
+  for (const id of order){
+    const t = idMap.get(id.toLowerCase());
+    const p = preds.get(id);
+    const faz = p.length ? Math.max(...p.map(pid => scheduled.get(pid).fez)) : 0;
+    const fez = faz + t._duration;
+    scheduled.set(id, {id:t.id, name:t.name, duration:t._duration, preds:p, faz, fez});
+  }
+  const projectDuration = Math.max(0, ...Array.from(scheduled.values()).map(s => s.fez));
+
+  for (let i = order.length - 1; i >= 0; i--){
+    const id = order[i];
+    const s = scheduled.get(id);
+    const succ = successors.get(id);
+    const sez = succ.length ? Math.min(...succ.map(sid => scheduled.get(sid).saz)) : projectDuration;
+    const saz = sez - s.duration;
+    s.sez = sez;
+    s.saz = saz;
+    s.gp = round2(saz - s.faz);
+    s.critical = Math.abs(s.gp) < 1e-6;
+  }
+
+  const criticalIds = new Set(Array.from(scheduled.values()).filter(s => s.critical).map(s => s.id));
+  const criticalEdges = new Set();
+  for (const s of scheduled.values()){
+    if (!s.critical) continue;
+    for (const pid of s.preds){
+      const p = scheduled.get(pid);
+      if (p.critical && Math.abs(p.fez - s.faz) < 1e-6){
+        criticalEdges.add(pid + "->" + s.id);
+      }
+    }
+  }
+
+  return {ok:true, errors, warnings, scheduled, projectDuration, criticalIds, criticalEdges, order, successors};
+}
+
+function round2(n){ return Math.round(n*100)/100; }
+
+// --- Layout: Ebenen (Levels) + Barycenter-Heuristik zur Kreuzungsreduktion ---
+function layoutGraph(scheduleResult){
+  const {order, scheduled, successors} = scheduleResult;
+  const level = new Map();
+  for (const id of order){
+    const p = scheduled.get(id).preds;
+    level.set(id, p.length ? Math.max(...p.map(pid => level.get(pid))) + 1 : 0);
+  }
+  const maxLevel = Math.max(0, ...Array.from(level.values()));
+  const columns = Array.from({length:maxLevel+1}, () => []);
+  for (const id of order) columns[level.get(id)].push(id);
+
+  const row = new Map();
+  columns.forEach(col => col.forEach((id,i) => row.set(id,i)));
+
+  function resort(col, baryFn){
+    const withBary = col.map((id,i) => ({id, b: baryFn(id, i)}));
+    withBary.sort((a,b) => a.b - b.b);
+    withBary.forEach((item,i) => row.set(item.id, i));
+    return withBary.map(item => item.id);
+  }
+
+  for (let l=1; l<=maxLevel; l++){
+    columns[l] = resort(columns[l], (id) => {
+      const p = scheduled.get(id).preds;
+      return p.reduce((sum,pid) => sum + row.get(pid), 0) / p.length;
+    });
+  }
+  for (let l=maxLevel-1; l>=0; l--){
+    columns[l] = resort(columns[l], (id) => {
+      const s = successors.get(id);
+      if (!s.length) return row.get(id);
+      return s.reduce((sum,sid) => sum + row.get(sid), 0) / s.length;
+    });
+  }
+
+  const colHeight = columns.map(col => col.length ? col.length*BOX_H + (col.length-1)*GAP_Y : 0);
+  const maxHeight = Math.max(0, ...colHeight);
+
+  const positions = new Map();
+  columns.forEach((col, l) => {
+    const offsetY = (maxHeight - colHeight[l]) / 2;
+    col.forEach((id, r) => {
+      positions.set(id, {
+        x: MARGIN + l*(BOX_W+GAP_X),
+        y: MARGIN + offsetY + r*(BOX_H+GAP_Y),
+        level: l
+      });
+    });
+  });
+
+  const totalWidth = MARGIN*2 + (maxLevel+1)*BOX_W + maxLevel*GAP_X;
+  const totalHeight = MARGIN*2 + maxHeight;
+  return {positions, totalWidth: Math.max(totalWidth, 400), totalHeight: Math.max(totalHeight, 200)};
+}
+
+// --- SVG-Rendering ---
+const svgNS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs){
+  const e = document.createElementNS(svgNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+let measureCtx = null;
+function wrapText(text, maxWidth, fontSize){
+  if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+  measureCtx.font = fontSize + "px -apple-system,Segoe UI,Roboto,Arial,sans-serif";
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = "";
+  for (const w of words){
+    const test = cur ? cur + " " + w : w;
+    if (measureCtx.measureText(test).width > maxWidth && cur){
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = test;
+    }
+    if (lines.length === 2) break;
+  }
+  if (lines.length < 2 && cur) lines.push(cur);
+  if (lines.length === 2){
+    const usedWords = lines.join(" ").split(/\s+/).length;
+    if (usedWords < words.length){
+      let last = lines[1];
+      while (measureCtx.measureText(last + "…").width > maxWidth && last.length > 1){
+        last = last.slice(0, -1);
+      }
+      lines[1] = last + "…";
+    }
+  }
+  return lines.length ? lines : [""];
+}
+
+function renderDiagram(scheduleResult, layoutResult){
+  svgHost.innerHTML = "";
+  const {positions, totalWidth, totalHeight} = layoutResult;
+  const svg = svgEl("svg", {
+    width:"100%", height:"100%",
+    viewBox:`0 0 ${totalWidth} ${totalHeight}`,
+    xmlns: svgNS
+  });
+
+  const defs = svgEl("defs", {});
+  [["arrow-n","#94a3b8"],["arrow-c","#dc2626"]].forEach(([id,color]) => {
+    const marker = svgEl("marker", {id, viewBox:"0 0 10 10", refX:"9", refY:"5", markerWidth:"7", markerHeight:"7", orient:"auto-start-reverse"});
+    marker.appendChild(svgEl("path", {d:"M0,0 L10,5 L0,10 Z", fill:color}));
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+
+  const viewport = svgEl("g", {id:"viewport"});
+  svg.appendChild(viewport);
+
+  const edgeLayer = svgEl("g", {});
+  const boxLayer = svgEl("g", {});
+  viewport.appendChild(edgeLayer);
+  viewport.appendChild(boxLayer);
+
+  // Kanten
+  for (const s of scheduleResult.scheduled.values()){
+    const to = positions.get(s.id);
+    for (const pid of s.preds){
+      const from = positions.get(pid);
+      const critical = scheduleResult.criticalEdges.has(pid + "->" + s.id);
+      const x1 = from.x + BOX_W, y1 = from.y + BOX_H/2;
+      const x2 = to.x, y2 = to.y + BOX_H/2;
+      const midx = (x1+x2)/2;
+      const path = svgEl("path", {
+        d:`M${x1},${y1} C${midx},${y1} ${midx},${y2} ${x2},${y2}`,
+        fill:"none",
+        stroke: critical ? "#dc2626" : "#94a3b8",
+        "stroke-width": critical ? "2.5" : "1.5",
+        "marker-end": critical ? "url(#arrow-c)" : "url(#arrow-n)"
+      });
+      edgeLayer.appendChild(path);
+    }
+  }
+
+  // Boxen
+  for (const s of scheduleResult.scheduled.values()){
+    const pos = positions.get(s.id);
+    boxLayer.appendChild(renderBox(s, pos.x, pos.y));
+  }
+
+  svgHost.appendChild(svg);
+  svgHost.querySelector("#emptyDiagram")?.remove();
+  view = {scale:1, x:0, y:0};
+  applyView();
+  wireViewInteractions(svg);
+}
+
+function renderBox(s, bx, by){
+  const g = svgEl("g", {});
+  const critical = s.critical;
+  const stroke = critical ? "#dc2626" : "#334155";
+  const fill = critical ? "#fff1f1" : "#ffffff";
+  const valColor = critical ? "#b91c1c" : "#1e293b";
+
+  g.appendChild(svgEl("rect", {x:bx, y:by, width:BOX_W, height:BOX_H, fill, stroke, "stroke-width": critical?2.5:1.5, rx:4}));
+  g.appendChild(svgEl("line", {x1:bx, y1:by+TOP_H, x2:bx+BOX_W, y2:by+TOP_H, stroke, "stroke-width":1}));
+  g.appendChild(svgEl("line", {x1:bx, y1:by+TOP_H+MID_H, x2:bx+BOX_W, y2:by+TOP_H+MID_H, stroke, "stroke-width":1}));
+  const third = BOX_W/3;
+  [1,2].forEach(i => {
+    g.appendChild(svgEl("line", {x1:bx+third*i, y1:by, x2:bx+third*i, y2:by+TOP_H, stroke, "stroke-width":1}));
+    g.appendChild(svgEl("line", {x1:bx+third*i, y1:by+TOP_H+MID_H, x2:bx+third*i, y2:by+BOX_H, stroke, "stroke-width":1}));
+  });
+
+  function cell(label, value, col, row){
+    const cx = bx + third*col + third/2;
+    const cy = row===0 ? by : by+TOP_H+MID_H;
+    const cap = svgEl("text", {x:cx, y:cy+11, "text-anchor":"middle", "font-size":"7.5", fill:"#94a3b8", "font-family":"inherit"});
+    cap.textContent = label;
+    const val = svgEl("text", {x:cx, y:cy+24, "text-anchor":"middle", "font-size":"13", "font-weight":"700", fill:valColor, "font-family":"inherit"});
+    val.textContent = value;
+    g.appendChild(cap); g.appendChild(val);
+  }
+  cell("FAZ", s.faz, 0, 0);
+  cell("D", s.duration, 1, 0);
+  cell("FEZ", s.fez, 2, 0);
+  cell("SAZ", s.saz, 0, 1);
+  cell("GP", s.gp, 1, 1);
+  cell("SEZ", s.sez, 2, 1);
+
+  const lines = wrapText(`${s.id}: ${s.name || "(ohne Namen)"}`, BOX_W-16, 11);
+  const startY = by+TOP_H + (lines.length===1 ? MID_H/2+4 : MID_H/2-4);
+  lines.forEach((line,i) => {
+    const t = svgEl("text", {x:bx+8, y:startY+i*14, "font-size":"11", fill:"#1e293b", "font-family":"inherit"});
+    t.textContent = line;
+    g.appendChild(t);
+  });
+
+  const titleEl = svgEl("title", {});
+  titleEl.textContent = `${s.id}: ${s.name}\nDauer: ${s.duration} Tage\nFAZ ${s.faz} / FEZ ${s.fez} / SAZ ${s.saz} / SEZ ${s.sez}\nGesamtpuffer: ${s.gp}${critical ? " (kritisch)" : ""}`;
+  g.appendChild(titleEl);
+
+  return g;
+}
+
+function applyView(){
+  const svg = svgHost.querySelector("svg");
+  const vp = svg?.querySelector("#viewport");
+  if (!vp) return;
+  vp.setAttribute("transform", `translate(${view.x},${view.y}) scale(${view.scale})`);
+  el("btnZoomReset").textContent = Math.round(view.scale*100) + "%";
+}
+
+function wireViewInteractions(svg){
+  let dragging = false, lastX=0, lastY=0;
+  svgHost.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 1.1 : 0.9;
+    view.scale = Math.min(3, Math.max(0.25, view.scale*delta));
+    applyView();
+  }, {passive:false});
+  svgHost.addEventListener("mousedown", (e) => {
+    dragging = true; lastX=e.clientX; lastY=e.clientY; svgHost.classList.add("grabbing");
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    view.x += e.clientX-lastX; view.y += e.clientY-lastY;
+    lastX=e.clientX; lastY=e.clientY;
+    applyView();
+  });
+  window.addEventListener("mouseup", () => { dragging=false; svgHost.classList.remove("grabbing"); });
+}
+
+// --- UI ---
+function renderTable(){
+  tableBody.innerHTML = "";
+  tasks.forEach((t, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="idcol"><input data-i="${i}" data-f="id" value="${escapeAttr(t.id)}"></td>
+      <td><input data-i="${i}" data-f="name" value="${escapeAttr(t.name)}"></td>
+      <td class="durcol"><input data-i="${i}" data-f="duration" value="${escapeAttr(t.duration)}"></td>
+      <td><input data-i="${i}" data-f="predsRaw" value="${escapeAttr(t.predsRaw)}"></td>
+      <td class="actioncol"><button class="danger" data-del="${i}" title="Zeile löschen">&times;</button></td>
+    `;
+    tableBody.appendChild(tr);
+  });
+}
+
+function escapeAttr(v){
+  return String(v ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+}
+
+let recomputeTimer = null;
+function scheduleRecompute(){
+  clearTimeout(recomputeTimer);
+  recomputeTimer = setTimeout(recomputeAndRender, 250);
+}
+
+tableBody.addEventListener("input", (e) => {
+  const i = e.target.getAttribute("data-i");
+  const f = e.target.getAttribute("data-f");
+  if (i===null || !f) return;
+  tasks[i][f] = f === "duration" ? e.target.value : e.target.value;
+  scheduleRecompute();
+});
+
+tableBody.addEventListener("click", (e) => {
+  const idx = e.target.getAttribute("data-del");
+  if (idx===null) return;
+  tasks.splice(Number(idx), 1);
+  renderTable();
+  recomputeAndRender();
+});
+
+function recomputeAndRender(){
+  const parsed = tasks.map(t => ({id:String(t.id).trim(), name:String(t.name).trim(), duration:parseDuration(t.duration), predsRaw:String(t.predsRaw)}));
+  const result = computeSchedule(parsed);
+  renderMessages(result.errors, result.warnings);
+
+  if (!result.ok){
+    svgHost.innerHTML = '<div id="emptyDiagram">Netzplan kann nicht gezeichnet werden – bitte Fehler oben beheben.</div>';
+    updateSummary(null);
+    return;
+  }
+  const lay = layoutGraph(result);
+  renderDiagram(result, lay);
+  updateSummary(result);
+}
+
+function renderMessages(errors, warnings){
+  const card = el("messagesCard");
+  const box = el("messages");
+  box.innerHTML = "";
+  errors.forEach(m => { const d=document.createElement("div"); d.className="msg error"; d.textContent="⚠ "+m; box.appendChild(d); });
+  warnings.forEach(m => { const d=document.createElement("div"); d.className="msg warning"; d.textContent="ℹ "+m; box.appendChild(d); });
+  card.style.display = (errors.length || warnings.length) ? "block" : "none";
+}
+
+function updateSummary(result){
+  if (!result){
+    el("statDuration").textContent = "–";
+    el("statTasks").textContent = "–";
+    el("statCritical").textContent = "–";
+    return;
+  }
+  el("statDuration").textContent = result.projectDuration;
+  el("statTasks").textContent = result.scheduled.size;
+  el("statCritical").textContent = result.criticalIds.size;
+}
+
+function loadTasksFromRows(rows){
+  const {tasks: parsedTasks, fallback} = rowsToTasks(rows);
+  tasks = parsedTasks.length ? parsedTasks : [];
+  renderTable();
+  if (fallback && tasks.length){
+    renderMessages([], ["Spaltenüberschriften nicht eindeutig erkannt – Standardreihenfolge angenommen (Nr., Vorgang, Dauer, Vorgänger). Bitte Tabelle prüfen."]);
+  }
+  recomputeAndRender();
+}
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:"array"});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:"", raw:true});
+      loadTasksFromRows(rows);
+    } catch (err){
+      renderMessages(["Datei konnte nicht gelesen werden: " + err.message], []);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+el("dropzone").addEventListener("click", () => el("fileInput").click());
+el("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+["dragenter","dragover"].forEach(ev => el("dropzone").addEventListener(ev, (e) => { e.preventDefault(); el("dropzone").classList.add("drag"); }));
+["dragleave","drop"].forEach(ev => el("dropzone").addEventListener(ev, (e) => { e.preventDefault(); el("dropzone").classList.remove("drag"); }));
+el("dropzone").addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+el("btnAddRow").addEventListener("click", () => {
+  tasks.push({id:"", name:"", duration:1, predsRaw:""});
+  renderTable();
+  recomputeAndRender();
+});
+
+el("btnExample").addEventListener("click", () => {
+  tasks = EXAMPLE_TASKS.map(t => Object.assign({}, t));
+  renderTable();
+  recomputeAndRender();
+});
+
+el("btnTemplate").addEventListener("click", () => {
+  const header = ["Nr.", "Vorgang", "Dauer (Tage)", "Vorgänger"];
+  const rows = [header, ...EXAMPLE_TASKS.map(t => [t.id, t.name, t.duration, t.predsRaw])];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [{wch:8},{wch:28},{wch:14},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Netzplan");
+  XLSX.writeFile(wb, "Netzplan_Vorlage.xlsx");
+});
+
+el("btnZoomIn").addEventListener("click", () => { view.scale = Math.min(3, view.scale*1.2); applyView(); });
+el("btnZoomOut").addEventListener("click", () => { view.scale = Math.max(0.25, view.scale/1.2); applyView(); });
+el("btnZoomReset").addEventListener("click", () => { view = {scale:1,x:0,y:0}; applyView(); });
+
+el("btnExportPng").addEventListener("click", () => {
+  const svg = svgHost.querySelector("svg");
+  if (!svg) return;
+  const clone = svg.cloneNode(true);
+  clone.querySelector("#viewport").removeAttribute("transform");
+  const vb = svg.viewBox.baseVal;
+  clone.setAttribute("width", vb.width);
+  clone.setAttribute("height", vb.height);
+  const svgStr = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob([svgStr], {type:"image/svg+xml;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = vb.width*scale;
+    canvas.height = vb.height*scale;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((pngBlob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(pngBlob);
+      a.download = "netzplan.png";
+      a.click();
+    });
+  };
+  img.src = url;
+});
+
+el("btnExportPdf").addEventListener("click", () => window.print());
+
+loadTasksFromRows([["Nr.","Vorgang","Dauer (Tage)","Vorgänger"], ...EXAMPLE_TASKS.map(t => [t.id,t.name,t.duration,t.predsRaw])]);
+
+})();
+</script>
+</body>
+</html>
