@@ -68,6 +68,7 @@
   td input:hover{border-color:var(--border);}
   td input:focus{outline:none; border-color:var(--accent); background:#fff;}
   td.idcol input{font-weight:600; width:70px;}
+  td.projcol input{width:130px;}
   td.durcol input{width:70px;}
   td.actioncol{width:36px; text-align:center;}
   #summaryBar{display:flex; gap:28px; flex-wrap:wrap;}
@@ -96,7 +97,8 @@
   .legend dl{margin:0;}
   .legend dt{font-weight:700; float:left; width:46px; color:var(--accent-dark);}
   .legend dd{margin:0 0 4px 64px; color:var(--text);}
-  .swatch{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:6px;}
+  .swatch{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:6px; flex-shrink:0;}
+  #legendProjects{font-size:13px;}
   footer{text-align:center; color:var(--muted); font-size:12px; padding:20px;}
   @media print{
     header, .card:not(#diagramCard), #diagramToolbar, footer{display:none !important;}
@@ -110,7 +112,7 @@
 
 <header>
   <h1>Netzplan-Tool</h1>
-  <p>Vorgangsknoten-Netzplan (AON) direkt im Browser erstellen &ndash; aus einer Excel-Tabelle mit Vorg&auml;ngen, Dauern und Abh&auml;ngigkeiten.</p>
+  <p>Vorgangsknoten-Netzplan (AON) direkt im Browser erstellen &ndash; aus einer Excel-Tabelle mit Projekten, Lieferergebnissen, Dauern und Abh&auml;ngigkeiten &uuml;ber Projektgrenzen hinweg.</p>
 </header>
 
 <main>
@@ -119,7 +121,7 @@
     <h2><span class="step">1</span> Excel-Datei laden</h2>
     <div id="dropzone">
       <div><strong>Excel- oder CSV-Datei hierher ziehen</strong> oder klicken zum Ausw&auml;hlen</div>
-      <div style="margin-top:4px; font-size:12.5px;">Erwartete Spalten: Nr. &middot; Vorgang &middot; Dauer (Tage) &middot; Vorg&auml;nger</div>
+      <div style="margin-top:4px; font-size:12.5px;">Erwartete Spalten: Nr. &middot; Projekt &middot; Lieferergebnis &middot; Dauer (Tage) &middot; Vorg&auml;nger</div>
     </div>
     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
     <div class="row" style="margin-top:14px;">
@@ -135,12 +137,13 @@
   </div>
 
   <div class="card">
-    <h2><span class="step">2</span> Vorg&auml;nge pr&uuml;fen &amp; bearbeiten</h2>
+    <h2><span class="step">2</span> Lieferergebnisse pr&uuml;fen &amp; bearbeiten</h2>
     <table>
       <thead>
         <tr>
-          <th style="width:80px;">Nr.</th>
-          <th>Vorgang</th>
+          <th style="width:70px;">Nr.</th>
+          <th style="width:150px;">Projekt</th>
+          <th>Lieferergebnis</th>
           <th style="width:90px;">Dauer (Tage)</th>
           <th style="width:160px;">Vorg&auml;nger</th>
           <th style="width:36px;"></th>
@@ -154,9 +157,15 @@
     <h2>Projekt&uuml;bersicht</h2>
     <div id="summaryBar">
       <div class="stat"><div class="val" id="statDuration">&ndash;</div><div class="lbl">Projektdauer (Tage)</div></div>
-      <div class="stat"><div class="val" id="statTasks">&ndash;</div><div class="lbl">Vorg&auml;nge gesamt</div></div>
-      <div class="stat"><div class="val crit" id="statCritical">&ndash;</div><div class="lbl">Kritische Vorg&auml;nge</div></div>
+      <div class="stat"><div class="val" id="statTasks">&ndash;</div><div class="lbl">Lieferergebnisse gesamt</div></div>
+      <div class="stat"><div class="val crit" id="statCritical">&ndash;</div><div class="lbl">Kritische Lieferergebnisse</div></div>
+      <div class="stat"><div class="val" id="statProjects">&ndash;</div><div class="lbl">Projekte</div></div>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>Projekt-Abh&auml;ngigkeiten</h2>
+    <div id="projectDeps" style="color:var(--muted); font-size:13px;">&ndash;</div>
   </div>
 
   <div class="card" id="diagramCard">
@@ -180,7 +189,7 @@
     <h2>Legende &amp; Notation</h2>
     <div class="legend">
       <div class="col">
-        <div style="margin-bottom:10px; font-size:13px;">Jeder Vorgang wird als 5-Felder-Kasten dargestellt:</div>
+        <div style="margin-bottom:10px; font-size:13px;">Jedes Lieferergebnis wird als 5-Felder-Kasten dargestellt:</div>
         <dl>
           <dt>FAZ</dt><dd>Fr&uuml;hester Anfangszeitpunkt</dd>
           <dt>D</dt><dd>Dauer des Vorgangs (Tage)</dd>
@@ -193,7 +202,12 @@
       <div class="col">
         <div style="margin-bottom:10px;"><span class="swatch" style="background:#dc2626;"></span> Roter Rahmen / rote Pfeile = <strong>kritischer Pfad</strong> (Gesamtpuffer&nbsp;=&nbsp;0)</div>
         <div style="margin-bottom:10px;"><span class="swatch" style="background:#94a3b8;"></span> Graue Pfeile = unkritische Abh&auml;ngigkeit mit Pufferzeit</div>
+        <div style="margin-bottom:10px;">&#8594; &#8594; &#8594; gestrichelte Pfeile = Abh&auml;ngigkeit <strong>zwischen zwei Projekten</strong></div>
         <div style="color:var(--muted); font-size:12.5px;">Diagramm mit Mausrad zoomen, mit gedr&uuml;ckter Maustaste verschieben.</div>
+      </div>
+      <div class="col">
+        <div style="margin-bottom:10px; font-size:13px;">Farbstreifen links am Kasten = Projekt (bei mehr als einem Projekt als Schwimmbahn dargestellt):</div>
+        <div id="legendProjects"></div>
       </div>
     </div>
   </div>
@@ -208,16 +222,17 @@
 
 const BOX_W = 180, BOX_H = 96, TOP_H = 30, MID_H = 36, BOT_H = 30;
 const GAP_X = 70, GAP_Y = 24, MARGIN = 40;
+const LABEL_W = 150, LANE_PAD = 16, LANE_GAP = 14;
+const PROJECT_PALETTE = ["#2563eb","#059669","#d97706","#7c3aed","#db2777","#0891b2","#65a30d","#ea580c","#4f46e5","#0d9488"];
 
 const EXAMPLE_TASKS = [
-  {id:"A", name:"Projekt vorbereiten",  duration:2, predsRaw:""},
-  {id:"B", name:"Planung",              duration:4, predsRaw:"A"},
-  {id:"C", name:"Genehmigung einholen", duration:5, predsRaw:"A"},
-  {id:"D", name:"Material bestellen",   duration:3, predsRaw:"B"},
-  {id:"E", name:"Bauarbeiten",          duration:6, predsRaw:"B,C"},
-  {id:"F", name:"Lieferung erhalten",   duration:1, predsRaw:"D"},
-  {id:"G", name:"Montage",              duration:4, predsRaw:"E,F"},
-  {id:"H", name:"Abnahme",              duration:2, predsRaw:"G"}
+  {id:"IA", projekt:"Infrastruktur", name:"Netzwerk aufbauen",           duration:3, predsRaw:""},
+  {id:"IB", projekt:"Infrastruktur", name:"Server bereitstellen",        duration:4, predsRaw:"IA"},
+  {id:"SA", projekt:"Software",      name:"Architektur definieren",      duration:3, predsRaw:""},
+  {id:"SB", projekt:"Software",      name:"Entwicklung",                 duration:8, predsRaw:"SA,IB"},
+  {id:"SC", projekt:"Software",      name:"Testing",                     duration:4, predsRaw:"SB"},
+  {id:"RA", projekt:"Rollout",       name:"Rollout-Umgebung vorbereiten",duration:3, predsRaw:"IB"},
+  {id:"RB", projekt:"Rollout",       name:"Go-Live",                     duration:2, predsRaw:"SC,RA"}
 ];
 
 let tasks = [];
@@ -237,15 +252,17 @@ function detectColumns(headerRow){
   const norm = (headerRow||[]).map(normalizeHeader);
   const find = (tests) => norm.findIndex(h => tests.some(t => h.includes(t)));
   let idCol = find(["nr", "id", "code"]);
-  let nameCol = norm.findIndex((h,i) => i!==idCol && (h.includes("vorgang") && !h.includes("vorganger")) || h.includes("bezeichnung") || h.includes("name") || h.includes("aufgabe") || h.includes("task"));
+  let projektCol = find(["projekt", "project"]);
+  let nameCol = norm.findIndex((h,i) => i!==idCol && i!==projektCol && ((h.includes("vorgang") && !h.includes("vorganger")) || h.includes("lieferergebnis") || h.includes("lieferobjekt") || h.includes("bezeichnung") || h.includes("name") || h.includes("aufgabe") || h.includes("task")));
   let durCol = find(["dauer", "tage", "duration"]);
   let predCol = find(["vorganger", "predecessor", "abhang"]);
   const fallback = idCol<0 || nameCol<0 || durCol<0 || predCol<0;
   if (idCol<0) idCol = 0;
-  if (nameCol<0) nameCol = 1;
-  if (durCol<0) durCol = 2;
-  if (predCol<0) predCol = 3;
-  return {idCol, nameCol, durCol, predCol, fallback};
+  if (projektCol<0) projektCol = 1;
+  if (nameCol<0) nameCol = 2;
+  if (durCol<0) durCol = 3;
+  if (predCol<0) predCol = 4;
+  return {idCol, projektCol, nameCol, durCol, predCol, fallback};
 }
 
 function parseDuration(v){
@@ -266,6 +283,7 @@ function rowsToTasks(rows){
   const dataRows = nonEmpty.slice(1);
   const result = dataRows.map(r => ({
     id: String(r[cols.idCol] ?? "").trim(),
+    projekt: String(r[cols.projektCol] ?? "").trim(),
     name: String(r[cols.nameCol] ?? "").trim(),
     duration: parseDuration(r[cols.durCol]),
     predsRaw: splitPreds(r[cols.predCol])
@@ -358,7 +376,7 @@ function computeSchedule(taskList){
     const p = preds.get(id);
     const faz = p.length ? Math.max(...p.map(pid => scheduled.get(pid).fez)) : 0;
     const fez = faz + t._duration;
-    scheduled.set(id, {id:t.id, name:t.name, duration:t._duration, preds:p, faz, fez});
+    scheduled.set(id, {id:t.id, projekt:t.projekt || "", name:t.name, duration:t._duration, preds:p, faz, fez});
   }
   const projectDuration = Math.max(0, ...Array.from(scheduled.values()).map(s => s.fez));
 
@@ -391,60 +409,106 @@ function computeSchedule(taskList){
 
 function round2(n){ return Math.round(n*100)/100; }
 
-// --- Layout: Ebenen (Levels) + Barycenter-Heuristik zur Kreuzungsreduktion ---
+function projectOf(s){ return s.projekt || "(ohne Projekt)"; }
+
+function buildProjectColors(lanesOrder){
+  const map = new Map();
+  lanesOrder.forEach((name,i) => map.set(name, PROJECT_PALETTE[i % PROJECT_PALETTE.length]));
+  return map;
+}
+
+// --- Layout: Ebenen (Levels, zeitliche Abfolge) x Schwimmbahnen (Projekte) ---
 function layoutGraph(scheduleResult){
-  const {order, scheduled, successors} = scheduleResult;
+  const {order, scheduled} = scheduleResult;
   const level = new Map();
   for (const id of order){
     const p = scheduled.get(id).preds;
     level.set(id, p.length ? Math.max(...p.map(pid => level.get(pid))) + 1 : 0);
   }
   const maxLevel = Math.max(0, ...Array.from(level.values()));
-  const columns = Array.from({length:maxLevel+1}, () => []);
-  for (const id of order) columns[level.get(id)].push(id);
 
-  const row = new Map();
-  columns.forEach(col => col.forEach((id,i) => row.set(id,i)));
+  const lanesOrder = [];
+  const seenLane = new Set();
+  for (const id of order){
+    const proj = projectOf(scheduled.get(id));
+    if (!seenLane.has(proj)){ seenLane.add(proj); lanesOrder.push(proj); }
+  }
+  const laneIndex = new Map(lanesOrder.map((p,i) => [p,i]));
+  const showLanes = lanesOrder.length > 1;
+  const labelW = showLanes ? LABEL_W : 0;
 
-  function resort(col, baryFn){
-    const withBary = col.map((id,i) => ({id, b: baryFn(id, i)}));
-    withBary.sort((a,b) => a.b - b.b);
-    withBary.forEach((item,i) => row.set(item.id, i));
-    return withBary.map(item => item.id);
+  // Vorgaenge je (Bahn, Ebene) buendeln, damit gleichzeitige Lieferergebnisse
+  // desselben Projekts innerhalb ihrer Bahn uebereinander gestapelt werden.
+  const buckets = lanesOrder.map(() => Array.from({length:maxLevel+1}, () => []));
+  for (const id of order){
+    const li = laneIndex.get(projectOf(scheduled.get(id)));
+    buckets[li][level.get(id)].push(id);
   }
 
-  for (let l=1; l<=maxLevel; l++){
-    columns[l] = resort(columns[l], (id) => {
-      const p = scheduled.get(id).preds;
-      return p.reduce((sum,pid) => sum + row.get(pid), 0) / p.length;
-    });
-  }
-  for (let l=maxLevel-1; l>=0; l--){
-    columns[l] = resort(columns[l], (id) => {
-      const s = successors.get(id);
-      if (!s.length) return row.get(id);
-      return s.reduce((sum,sid) => sum + row.get(sid), 0) / s.length;
-    });
-  }
+  const maxSubRows = buckets.map(laneBuckets => Math.max(1, ...laneBuckets.map(b => b.length)));
+  const laneBandHeight = maxSubRows.map(n => n*BOX_H + (n-1)*GAP_Y);
 
-  const colHeight = columns.map(col => col.length ? col.length*BOX_H + (col.length-1)*GAP_Y : 0);
-  const maxHeight = Math.max(0, ...colHeight);
+  const laneY = [];
+  let cursorY = MARGIN;
+  laneBandHeight.forEach((h,i) => {
+    laneY.push(cursorY);
+    cursorY += h + LANE_PAD*2;
+    if (i < laneBandHeight.length-1) cursorY += LANE_GAP;
+  });
+  const totalHeight = cursorY + MARGIN;
 
   const positions = new Map();
-  columns.forEach((col, l) => {
-    const offsetY = (maxHeight - colHeight[l]) / 2;
-    col.forEach((id, r) => {
-      positions.set(id, {
-        x: MARGIN + l*(BOX_W+GAP_X),
-        y: MARGIN + offsetY + r*(BOX_H+GAP_Y),
-        level: l
-      });
+  for (const id of order){
+    const li = laneIndex.get(projectOf(scheduled.get(id)));
+    const lv = level.get(id);
+    const bucket = buckets[li][lv];
+    const subRow = bucket.indexOf(id);
+    const count = bucket.length;
+    const bandH = laneBandHeight[li];
+    const groupH = count*BOX_H + (count-1)*GAP_Y;
+    const offset = (bandH - groupH) / 2;
+    positions.set(id, {
+      x: MARGIN + labelW + lv*(BOX_W+GAP_X),
+      y: laneY[li] + LANE_PAD + offset + subRow*(BOX_H+GAP_Y),
+      level: lv
     });
-  });
+  }
 
-  const totalWidth = MARGIN*2 + (maxLevel+1)*BOX_W + maxLevel*GAP_X;
-  const totalHeight = MARGIN*2 + maxHeight;
-  return {positions, totalWidth: Math.max(totalWidth, 400), totalHeight: Math.max(totalHeight, 200)};
+  const totalWidth = MARGIN*2 + labelW + (maxLevel+1)*BOX_W + maxLevel*GAP_X;
+  const lanes = lanesOrder.map((name,i) => ({name, y: laneY[i], height: laneBandHeight[i] + LANE_PAD*2}));
+
+  return {
+    positions,
+    totalWidth: Math.max(totalWidth, 400),
+    totalHeight: Math.max(totalHeight, 200),
+    lanes,
+    showLanes,
+    labelW,
+    projectColors: buildProjectColors(lanesOrder)
+  };
+}
+
+// --- Projekt-Abhaengigkeiten: welches Projekt haengt ueber welche Lieferergebnisse von welchem ab ---
+function computeProjectDependencies(scheduleResult){
+  const deps = new Map();
+  for (const s of scheduleResult.scheduled.values()){
+    const toProj = projectOf(s);
+    for (const pid of s.preds){
+      const p = scheduleResult.scheduled.get(pid);
+      const fromProj = projectOf(p);
+      if (fromProj === toProj) continue;
+      const key = fromProj + "||" + toProj;
+      if (!deps.has(key)) deps.set(key, {from:fromProj, to:toProj, links:[]});
+      deps.get(key).links.push({fromId:p.id, fromName:p.name, toId:s.id, toName:s.name, critical:scheduleResult.criticalEdges.has(pid+"->"+s.id)});
+    }
+  }
+  const list = Array.from(deps.values());
+  const pairKeys = new Set(list.map(d => d.from+"||"+d.to));
+  const mutual = [];
+  for (const d of list){
+    if (pairKeys.has(d.to+"||"+d.from) && d.from < d.to) mutual.push([d.from, d.to]);
+  }
+  return {list, mutual};
 }
 
 // --- SVG-Rendering ---
@@ -456,7 +520,8 @@ function svgEl(tag, attrs){
 }
 
 let measureCtx = null;
-function wrapText(text, maxWidth, fontSize){
+function wrapText(text, maxWidth, fontSize, maxLines){
+  maxLines = maxLines || 2;
   if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
   measureCtx.font = fontSize + "px -apple-system,Segoe UI,Roboto,Arial,sans-serif";
   const words = String(text).split(/\s+/).filter(Boolean);
@@ -470,17 +535,17 @@ function wrapText(text, maxWidth, fontSize){
     } else {
       cur = test;
     }
-    if (lines.length === 2) break;
+    if (lines.length === maxLines) break;
   }
-  if (lines.length < 2 && cur) lines.push(cur);
-  if (lines.length === 2){
+  if (lines.length < maxLines && cur) lines.push(cur);
+  if (lines.length === maxLines){
     const usedWords = lines.join(" ").split(/\s+/).length;
     if (usedWords < words.length){
-      let last = lines[1];
+      let last = lines[maxLines-1];
       while (measureCtx.measureText(last + "…").width > maxWidth && last.length > 1){
         last = last.slice(0, -1);
       }
-      lines[1] = last + "…";
+      lines[maxLines-1] = last + "…";
     }
   }
   return lines.length ? lines : [""];
@@ -488,7 +553,7 @@ function wrapText(text, maxWidth, fontSize){
 
 function renderDiagram(scheduleResult, layoutResult){
   svgHost.innerHTML = "";
-  const {positions, totalWidth, totalHeight} = layoutResult;
+  const {positions, totalWidth, totalHeight, lanes, showLanes, projectColors} = layoutResult;
   const svg = svgEl("svg", {
     width:"100%", height:"100%",
     viewBox:`0 0 ${totalWidth} ${totalHeight}`,
@@ -506,35 +571,60 @@ function renderDiagram(scheduleResult, layoutResult){
   const viewport = svgEl("g", {id:"viewport"});
   svg.appendChild(viewport);
 
+  const laneLayer = svgEl("g", {});
   const edgeLayer = svgEl("g", {});
   const boxLayer = svgEl("g", {});
+  viewport.appendChild(laneLayer);
   viewport.appendChild(edgeLayer);
   viewport.appendChild(boxLayer);
+
+  // Schwimmbahnen (eine je Projekt)
+  if (showLanes){
+    lanes.forEach(lane => {
+      const color = projectColors.get(lane.name);
+      laneLayer.appendChild(svgEl("rect", {x:0, y:lane.y, width:totalWidth, height:lane.height, fill:color, "fill-opacity":"0.06"}));
+      laneLayer.appendChild(svgEl("line", {x1:0, y1:lane.y, x2:totalWidth, y2:lane.y, stroke:"#e2e8f0", "stroke-width":1}));
+      const lines = wrapText(lane.name, LABEL_W-24, 12, 3);
+      const cy = lane.y + lane.height/2;
+      const startY = cy - (lines.length-1)*7.5 + 4;
+      lines.forEach((line,i) => {
+        const t = svgEl("text", {x:12, y: startY + i*15, "font-size":"12", "font-weight":"700", fill:color, "font-family":"inherit"});
+        t.textContent = line;
+        laneLayer.appendChild(t);
+      });
+    });
+    const lastLane = lanes[lanes.length-1];
+    laneLayer.appendChild(svgEl("line", {x1:0, y1:lastLane.y+lastLane.height, x2:totalWidth, y2:lastLane.y+lastLane.height, stroke:"#e2e8f0", "stroke-width":1}));
+  }
 
   // Kanten
   for (const s of scheduleResult.scheduled.values()){
     const to = positions.get(s.id);
     for (const pid of s.preds){
       const from = positions.get(pid);
+      const p = scheduleResult.scheduled.get(pid);
       const critical = scheduleResult.criticalEdges.has(pid + "->" + s.id);
+      const crossProject = showLanes && projectOf(p) !== projectOf(s);
       const x1 = from.x + BOX_W, y1 = from.y + BOX_H/2;
       const x2 = to.x, y2 = to.y + BOX_H/2;
       const midx = (x1+x2)/2;
-      const path = svgEl("path", {
+      const attrs = {
         d:`M${x1},${y1} C${midx},${y1} ${midx},${y2} ${x2},${y2}`,
         fill:"none",
         stroke: critical ? "#dc2626" : "#94a3b8",
         "stroke-width": critical ? "2.5" : "1.5",
         "marker-end": critical ? "url(#arrow-c)" : "url(#arrow-n)"
-      });
-      edgeLayer.appendChild(path);
+      };
+      if (crossProject) attrs["stroke-dasharray"] = "7,4";
+      edgeLayer.appendChild(svgEl("path", attrs));
     }
   }
 
   // Boxen
   for (const s of scheduleResult.scheduled.values()){
     const pos = positions.get(s.id);
-    boxLayer.appendChild(renderBox(s, pos.x, pos.y));
+    const color = showLanes ? projectColors.get(projectOf(s)) : null;
+    boxLayer.appendChild(renderBox(s, pos.x, pos.y, color));
   }
 
   svgHost.appendChild(svg);
@@ -544,7 +634,7 @@ function renderDiagram(scheduleResult, layoutResult){
   wireViewInteractions(svg);
 }
 
-function renderBox(s, bx, by){
+function renderBox(s, bx, by, projectColor){
   const g = svgEl("g", {});
   const critical = s.critical;
   const stroke = critical ? "#dc2626" : "#334155";
@@ -552,6 +642,9 @@ function renderBox(s, bx, by){
   const valColor = critical ? "#b91c1c" : "#1e293b";
 
   g.appendChild(svgEl("rect", {x:bx, y:by, width:BOX_W, height:BOX_H, fill, stroke, "stroke-width": critical?2.5:1.5, rx:4}));
+  if (projectColor){
+    g.appendChild(svgEl("rect", {x:bx+1.5, y:by+1.5, width:4, height:BOX_H-3, fill:projectColor}));
+  }
   g.appendChild(svgEl("line", {x1:bx, y1:by+TOP_H, x2:bx+BOX_W, y2:by+TOP_H, stroke, "stroke-width":1}));
   g.appendChild(svgEl("line", {x1:bx, y1:by+TOP_H+MID_H, x2:bx+BOX_W, y2:by+TOP_H+MID_H, stroke, "stroke-width":1}));
   const third = BOX_W/3;
@@ -585,7 +678,7 @@ function renderBox(s, bx, by){
   });
 
   const titleEl = svgEl("title", {});
-  titleEl.textContent = `${s.id}: ${s.name}\nDauer: ${s.duration} Tage\nFAZ ${s.faz} / FEZ ${s.fez} / SAZ ${s.saz} / SEZ ${s.sez}\nGesamtpuffer: ${s.gp}${critical ? " (kritisch)" : ""}`;
+  titleEl.textContent = `${s.id}: ${s.name}${s.projekt ? "\nProjekt: " + s.projekt : ""}\nDauer: ${s.duration} Tage\nFAZ ${s.faz} / FEZ ${s.fez} / SAZ ${s.saz} / SEZ ${s.sez}\nGesamtpuffer: ${s.gp}${critical ? " (kritisch)" : ""}`;
   g.appendChild(titleEl);
 
   return g;
@@ -626,6 +719,7 @@ function renderTable(){
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td class="idcol"><input data-i="${i}" data-f="id" value="${escapeAttr(t.id)}"></td>
+      <td class="projcol"><input data-i="${i}" data-f="projekt" value="${escapeAttr(t.projekt)}"></td>
       <td><input data-i="${i}" data-f="name" value="${escapeAttr(t.name)}"></td>
       <td class="durcol"><input data-i="${i}" data-f="duration" value="${escapeAttr(t.duration)}"></td>
       <td><input data-i="${i}" data-f="predsRaw" value="${escapeAttr(t.predsRaw)}"></td>
@@ -662,18 +756,55 @@ tableBody.addEventListener("click", (e) => {
 });
 
 function recomputeAndRender(){
-  const parsed = tasks.map(t => ({id:String(t.id).trim(), name:String(t.name).trim(), duration:parseDuration(t.duration), predsRaw:String(t.predsRaw)}));
+  const parsed = tasks.map(t => ({id:String(t.id).trim(), projekt:String(t.projekt||"").trim(), name:String(t.name).trim(), duration:parseDuration(t.duration), predsRaw:String(t.predsRaw)}));
   const result = computeSchedule(parsed);
   renderMessages(result.errors, result.warnings);
 
   if (!result.ok){
     svgHost.innerHTML = '<div id="emptyDiagram">Netzplan kann nicht gezeichnet werden – bitte Fehler oben beheben.</div>';
     updateSummary(null);
+    el("projectDeps").textContent = "–";
+    el("legendProjects").innerHTML = "";
     return;
   }
   const lay = layoutGraph(result);
   renderDiagram(result, lay);
   updateSummary(result);
+  renderProjectDeps(result);
+  renderLegendProjects(lay);
+}
+
+function renderProjectDeps(scheduleResult){
+  const container = el("projectDeps");
+  const {list, mutual} = computeProjectDependencies(scheduleResult);
+  if (!list.length){
+    container.innerHTML = '<div style="color:var(--muted); font-size:13px;">Keine projektübergreifenden Abhängigkeiten – alle Lieferergebnisse liegen im selben Projekt oder es ist nur ein Projekt vorhanden.</div>';
+    return;
+  }
+  let html = "";
+  list.forEach(d => {
+    const linksHtml = d.links.map(l => `${escapeAttr(l.fromId)}: ${escapeAttr(l.fromName)} &rarr; ${escapeAttr(l.toId)}: ${escapeAttr(l.toName)}${l.critical ? ' <span style="color:var(--critical-text); font-weight:600;">(kritisch)</span>' : ''}`).join("<br>");
+    html += `<div style="margin-bottom:12px; padding:10px 12px; background:#f8fafc; border:1px solid var(--border); border-radius:7px;">
+      <div style="font-weight:700; margin-bottom:4px;">${escapeAttr(d.from)} &rarr; ${escapeAttr(d.to)}</div>
+      <div style="font-size:12.5px; color:var(--muted); line-height:1.7;">${linksHtml}</div>
+    </div>`;
+  });
+  mutual.forEach(([a,b]) => {
+    html += `<div class="msg warning">ℹ Projekte "${escapeAttr(a)}" und "${escapeAttr(b)}" hängen wechselseitig voneinander ab (Lieferobjekt-Abhängigkeiten in beide Richtungen).</div>`;
+  });
+  container.innerHTML = html;
+}
+
+function renderLegendProjects(lay){
+  const container = el("legendProjects");
+  if (!lay.showLanes){
+    container.innerHTML = '<div style="color:var(--muted);">Nur ein Projekt vorhanden – keine Schwimmbahnen nötig.</div>';
+    return;
+  }
+  container.innerHTML = lay.lanes.map(lane => {
+    const color = lay.projectColors.get(lane.name);
+    return `<div style="display:flex; align-items:center; gap:6px; margin-bottom:5px;"><span class="swatch" style="background:${color};"></span>${escapeAttr(lane.name)}</div>`;
+  }).join("");
 }
 
 function renderMessages(errors, warnings){
@@ -690,11 +821,14 @@ function updateSummary(result){
     el("statDuration").textContent = "–";
     el("statTasks").textContent = "–";
     el("statCritical").textContent = "–";
+    el("statProjects").textContent = "–";
     return;
   }
   el("statDuration").textContent = result.projectDuration;
   el("statTasks").textContent = result.scheduled.size;
   el("statCritical").textContent = result.criticalIds.size;
+  const distinctProjects = new Set(Array.from(result.scheduled.values()).map(s => projectOf(s)));
+  el("statProjects").textContent = distinctProjects.size;
 }
 
 function loadTasksFromRows(rows){
@@ -702,7 +836,7 @@ function loadTasksFromRows(rows){
   tasks = parsedTasks.length ? parsedTasks : [];
   renderTable();
   if (fallback && tasks.length){
-    renderMessages([], ["Spaltenüberschriften nicht eindeutig erkannt – Standardreihenfolge angenommen (Nr., Vorgang, Dauer, Vorgänger). Bitte Tabelle prüfen."]);
+    renderMessages([], ["Spaltenüberschriften nicht eindeutig erkannt – Standardreihenfolge angenommen (Nr., Projekt, Lieferergebnis, Dauer, Vorgänger). Bitte Tabelle prüfen."]);
   }
   recomputeAndRender();
 }
@@ -730,7 +864,7 @@ el("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) handl
 el("dropzone").addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
 
 el("btnAddRow").addEventListener("click", () => {
-  tasks.push({id:"", name:"", duration:1, predsRaw:""});
+  tasks.push({id:"", projekt:"", name:"", duration:1, predsRaw:""});
   renderTable();
   recomputeAndRender();
 });
@@ -742,10 +876,10 @@ el("btnExample").addEventListener("click", () => {
 });
 
 el("btnTemplate").addEventListener("click", () => {
-  const header = ["Nr.", "Vorgang", "Dauer (Tage)", "Vorgänger"];
-  const rows = [header, ...EXAMPLE_TASKS.map(t => [t.id, t.name, t.duration, t.predsRaw])];
+  const header = ["Nr.", "Projekt", "Lieferergebnis", "Dauer (Tage)", "Vorgänger"];
+  const rows = [header, ...EXAMPLE_TASKS.map(t => [t.id, t.projekt, t.name, t.duration, t.predsRaw])];
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{wch:8},{wch:28},{wch:14},{wch:14}];
+  ws["!cols"] = [{wch:8},{wch:18},{wch:28},{wch:14},{wch:14}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Netzplan");
   XLSX.writeFile(wb, "Netzplan_Vorlage.xlsx");
@@ -789,7 +923,7 @@ el("btnExportPng").addEventListener("click", () => {
 
 el("btnExportPdf").addEventListener("click", () => window.print());
 
-loadTasksFromRows([["Nr.","Vorgang","Dauer (Tage)","Vorgänger"], ...EXAMPLE_TASKS.map(t => [t.id,t.name,t.duration,t.predsRaw])]);
+loadTasksFromRows([["Nr.","Projekt","Lieferergebnis","Dauer (Tage)","Vorgänger"], ...EXAMPLE_TASKS.map(t => [t.id,t.projekt,t.name,t.duration,t.predsRaw])]);
 
 })();
 </script>
