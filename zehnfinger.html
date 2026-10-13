@@ -1,0 +1,829 @@
+<meta charset="utf-8">
+<title>Zehnfinger-Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: Lektionsliste links, Übungsfläche mit Text, Händen und Tastatur rechts; auf dem Handy untereinander. */
+:root {
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --ink: #18212d;
+  --muted: #5a6778;
+  --line: #d3d9e2;
+  --accent: #2b55c9;
+  --accent-soft: #dfe7fb;
+  --ok: #1d7f54;
+  --bad: #c3352b;
+  --bad-soft: #fbe1de;
+  --gold: #c58a12;
+  --f-pinky: #f4c6ce;
+  --f-ring: #f5dea4;
+  --f-middle: #c2e5c6;
+  --f-index: #c4d5f5;
+  --f-thumb: #dde2ea;
+  --mod: #e4e8ee;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151b; --surface: #19202a; --ink: #e5eaf1; --muted: #93a0b2; --line: #2a3442;
+    --accent: #86a4ff; --accent-soft: #23304f; --ok: #4fc58f; --bad: #ff6f62; --bad-soft: #4a2320; --gold: #f0b93a;
+    --f-pinky: #58303a; --f-ring: #574823; --f-middle: #284832; --f-index: #293b61; --f-thumb: #2e3743; --mod: #232b36;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151b; --surface: #19202a; --ink: #e5eaf1; --muted: #93a0b2; --line: #2a3442;
+  --accent: #86a4ff; --accent-soft: #23304f; --ok: #4fc58f; --bad: #ff6f62; --bad-soft: #4a2320; --gold: #f0b93a;
+  --f-pinky: #58303a; --f-ring: #574823; --f-middle: #284832; --f-index: #293b61; --f-thumb: #2e3743; --mod: #232b36;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; padding: 20px 16px 40px; }
+button, select, textarea { font: inherit; color: inherit; }
+button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 20px; }
+@media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+header.top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.brand h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.05; margin: 0; letter-spacing: -0.02em; }
+.brand h1 span { color: var(--accent); }
+.brand p { margin: 4px 0 0; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.controls label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+select { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+
+/* Lektionen */
+aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.lessons { padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+.group-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 10px 8px 4px; }
+.lesson { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; border-radius: 9px; padding: 7px 8px; cursor: pointer; }
+.lesson:hover { background: var(--mod); }
+.lesson.active { background: var(--accent-soft); }
+.lesson .num { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.lesson .name { font-weight: 700; display: block; }
+.lesson .caps { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+.lesson .cap { font-family: var(--font-mono); font-size: 0.72rem; line-height: 1; padding: 3px 5px; border-radius: 4px; background: var(--mod); border-bottom: 2px solid var(--line); }
+.lesson .sub { font-size: 0.8rem; color: var(--muted); }
+.lesson .meta { text-align: right; font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stars { color: var(--line); letter-spacing: 1px; font-size: 0.85rem; }
+.stars b { color: var(--gold); font-weight: 400; }
+.lesson.recommended .num { color: var(--accent); font-weight: 600; }
+
+.tips { padding: 14px 16px; }
+.tips h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 6px; }
+.tips ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.9rem; display: grid; gap: 4px; }
+kbd { font-family: var(--font-mono); font-size: 0.8em; background: var(--mod); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--ink); }
+
+/* Übung */
+main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.practice { padding: 18px 20px 20px; position: relative; }
+.practice-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.practice-head h2 { font-family: var(--font-display); font-size: 1.4rem; margin: 0; text-wrap: balance; }
+.practice-head p { margin: 2px 0 0; color: var(--muted); font-size: 0.92rem; }
+.btn { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 7px 14px; cursor: pointer; font-weight: 700; font-size: 0.9rem; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn.primary:hover { filter: brightness(1.08); color: var(--surface); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.custom { margin-top: 14px; display: grid; gap: 8px; }
+.custom textarea { width: 100%; min-height: 90px; resize: vertical; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; line-height: 1.45; }
+.custom .note { font-size: 0.85rem; color: var(--muted); margin: 0; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 16px 0 12px; }
+@media (max-width: 520px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { border-left: 3px solid var(--line); padding: 2px 10px; }
+.stat .v { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .l { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.stat.speed { border-color: var(--accent); }
+
+.progress { height: 4px; border-radius: 4px; background: var(--mod); overflow: hidden; }
+.progress div { height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+
+.text { font-family: var(--font-mono); font-size: clamp(1.15rem, 2.4vw, 1.6rem); line-height: 1.85; white-space: pre-wrap; word-break: break-word; margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--bg); min-height: 7em; max-height: 13em; overflow-y: auto; color: var(--muted); }
+.text .c { border-radius: 3px; }
+.text .ok { color: var(--ink); opacity: 0.55; }
+.text .err { color: var(--bad); opacity: 0.8; text-decoration: underline wavy; text-underline-offset: 5px; }
+.text .cur { color: var(--ink); background: var(--accent-soft); box-shadow: inset 0 -3px 0 var(--accent); }
+.text .cur.miss { background: var(--bad-soft); box-shadow: inset 0 -3px 0 var(--bad); color: var(--bad); }
+.text .cur.sp::before { content: "␣"; position: absolute; opacity: 0.45; }
+.text .c.sp { position: relative; }
+.start-hint { margin: 10px 0 0; font-size: 0.88rem; color: var(--muted); }
+.start-hint strong { color: var(--accent); }
+
+.result { position: absolute; inset: 0; background: color-mix(in srgb, var(--surface) 94%, transparent); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; padding: 20px; }
+.result h3 { font-family: var(--font-display); font-size: 1.8rem; margin: 0; }
+.result .big-stars { font-size: 2.2rem; letter-spacing: 6px; color: var(--line); line-height: 1; }
+.result .big-stars b { color: var(--gold); font-weight: 400; }
+.result .figures { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 28px; font-variant-numeric: tabular-nums; }
+.result .figures div { display: grid; }
+.result .figures strong { font-family: var(--font-display); font-size: 1.5rem; }
+.result .figures span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.result p { margin: 0; color: var(--muted); max-width: 46ch; }
+
+/* Hände + Tastatur */
+.board { padding: 16px 20px 20px; }
+.board-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+.finger-hint { font-weight: 700; display: flex; align-items: center; gap: 8px; min-height: 1.6em; }
+.finger-hint .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ink); flex: none; }
+.finger-hint small { font-weight: 400; color: var(--muted); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); cursor: pointer; }
+
+.hands { display: flex; justify-content: center; gap: clamp(30px, 10vw, 120px); margin-bottom: 14px; }
+.hand { display: flex; align-items: flex-end; gap: 5px; }
+.fg { width: 20px; border-radius: 10px 10px 6px 6px; background: var(--fc); border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s; }
+.fg.on { border-color: var(--ink); transform: translateY(-6px); }
+.fg.thumb { width: 22px; height: 30px; border-radius: 10px; }
+.hand.left .thumb { transform: rotate(35deg) translate(2px, 4px); }
+.hand.right .thumb { transform: rotate(-35deg) translate(-2px, 4px); }
+.hand.left .thumb.on { transform: rotate(35deg) translate(2px, -2px); }
+.hand.right .thumb.on { transform: rotate(-35deg) translate(-2px, -2px); }
+
+.kb-wrap { overflow-x: auto; }
+.kb { display: grid; grid-template-columns: repeat(60, minmax(0, 1fr)); gap: 5px; min-width: 560px; user-select: none; }
+.key { position: relative; height: 46px; border-radius: 7px; background: var(--kc, var(--mod)); border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-bottom-width: 3px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: var(--font-mono); font-size: 0.95rem; line-height: 1.05; transition: transform 0.08s, box-shadow 0.12s; }
+.key .sh { font-size: 0.68rem; color: var(--muted); }
+.key.mod { font-family: var(--font-body); font-size: 0.72rem; color: var(--muted); }
+.key.bump::after { content: ""; position: absolute; bottom: 6px; width: 10px; height: 2px; border-radius: 2px; background: var(--ink); opacity: 0.6; }
+.key[data-f="0"], .key[data-f="7"], .fg[data-f="0"], .fg[data-f="7"] { --kc: var(--f-pinky); --fc: var(--f-pinky); }
+.key[data-f="1"], .key[data-f="6"], .fg[data-f="1"], .fg[data-f="6"] { --kc: var(--f-ring); --fc: var(--f-ring); }
+.key[data-f="2"], .key[data-f="5"], .fg[data-f="2"], .fg[data-f="5"] { --kc: var(--f-middle); --fc: var(--f-middle); }
+.key[data-f="3"], .key[data-f="4"], .fg[data-f="3"], .fg[data-f="4"] { --kc: var(--f-index); --fc: var(--f-index); }
+.key[data-f="8"], .fg[data-f="8"] { --kc: var(--f-thumb); --fc: var(--f-thumb); }
+.key.next { box-shadow: 0 0 0 3px var(--accent); transform: translateY(-2px); z-index: 1; }
+.key.wrong { box-shadow: 0 0 0 3px var(--bad); }
+.kb.heatmap .key:not(.mod) { --kc: color-mix(in srgb, var(--bad) calc(var(--heat, 0) * 100%), var(--surface)); }
+.kb.heatmap .key.nodata { --kc: var(--surface); opacity: 0.6; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 0.82rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.history { padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; font-size: 0.9rem; color: var(--muted); }
+.history strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.history .reset { margin-left: auto; background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 0.85rem; }
+.history .reset.confirm { color: var(--bad); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Zehn<span>finger</span>-Trainer</h1>
+      <p>Blind tippen lernen, Lektion für Lektion.</p>
+    </div>
+    <div class="controls">
+      <label for="layout">Tastatur</label>
+      <select id="layout">
+        <option value="ch">Schweiz (QWERTZ)</option>
+        <option value="de">Deutschland (QWERTZ)</option>
+      </select>
+    </div>
+  </header>
+
+  <aside>
+    <nav class="panel lessons" id="lessons" aria-label="Lektionen"></nav>
+    <section class="panel tips">
+      <h2>So übst du richtig</h2>
+      <ul>
+        <li>Zeigefinger auf <kbd>F</kbd> und <kbd>J</kbd>, die kleinen Rillen helfen beim Ertasten.</li>
+        <li>Schau auf den Bildschirm, nicht auf die Tasten.</li>
+        <li>Genauigkeit zuerst, das Tempo kommt von allein.</li>
+        <li>Grossbuchstaben: Umschalttaste mit der anderen Hand.</li>
+        <li><kbd>Esc</kbd> neuer Text, <kbd>Enter</kbd> nach dem Ende: weiter.</li>
+        <li>Lieber täglich 10 Minuten als einmal pro Woche eine Stunde.</li>
+      </ul>
+    </section>
+  </aside>
+
+  <main>
+    <section class="panel practice" id="practice">
+      <div class="practice-head">
+        <div>
+          <h2 id="lessonTitle">Grundreihe</h2>
+          <p id="lessonDesc"></p>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="newText" type="button">Neuer Text</button>
+        </div>
+      </div>
+
+      <div class="custom" id="customPanel" hidden>
+        <textarea id="customText" spellcheck="false" aria-label="Eigener Übungstext"></textarea>
+        <div class="btn-row"><button class="btn primary" id="useCustom" type="button">Diesen Text üben</button></div>
+        <p class="note" id="customNote"></p>
+      </div>
+
+      <div class="stats">
+        <div class="stat speed"><div class="v" id="sCpm">0</div><div class="l">Anschläge / Min</div></div>
+        <div class="stat"><div class="v" id="sAcc">100 %</div><div class="l">Genauigkeit</div></div>
+        <div class="stat"><div class="v" id="sErr">0</div><div class="l">Fehler</div></div>
+        <div class="stat"><div class="v" id="sTime">0:00</div><div class="l">Zeit</div></div>
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+      <div class="text" id="text" aria-live="off"></div>
+      <p class="start-hint" id="startHint"><strong>Einfach lostippen.</strong> Die Zeit läuft ab dem ersten Anschlag. Bei einem Fehler bleibt der Cursor stehen, bis die richtige Taste kommt.</p>
+
+      <div class="result" id="result" hidden>
+        <div class="big-stars" id="rStars"></div>
+        <h3 id="rTitle">Geschafft!</h3>
+        <div class="figures">
+          <div><strong id="rCpm">0</strong><span>Anschläge / Min</span></div>
+          <div><strong id="rWpm">0</strong><span>Wörter / Min</span></div>
+          <div><strong id="rAcc">0 %</strong><span>Genauigkeit</span></div>
+          <div><strong id="rErr">0</strong><span>Fehler</span></div>
+        </div>
+        <p id="rMsg"></p>
+        <div class="btn-row">
+          <button class="btn" id="rAgain" type="button">Nochmal <kbd>Esc</kbd></button>
+          <button class="btn primary" id="rNext" type="button">Weiter <kbd>Enter</kbd></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel board">
+      <div class="board-head">
+        <div class="finger-hint" id="fingerHint"></div>
+        <label class="toggle"><input type="checkbox" id="heat"> Fehlerkarte zeigen</label>
+      </div>
+      <div class="hands" aria-hidden="true">
+        <div class="hand left">
+          <div class="fg" data-f="0" style="height:42px"></div>
+          <div class="fg" data-f="1" style="height:58px"></div>
+          <div class="fg" data-f="2" style="height:66px"></div>
+          <div class="fg" data-f="3" style="height:58px"></div>
+          <div class="fg thumb" data-f="8"></div>
+        </div>
+        <div class="hand right">
+          <div class="fg thumb" data-f="8"></div>
+          <div class="fg" data-f="4" style="height:58px"></div>
+          <div class="fg" data-f="5" style="height:66px"></div>
+          <div class="fg" data-f="6" style="height:58px"></div>
+          <div class="fg" data-f="7" style="height:42px"></div>
+        </div>
+      </div>
+      <div class="kb-wrap"><div class="kb" id="kb"></div></div>
+      <div class="legend" id="legend">
+        <span><i style="background:var(--f-pinky)"></i>Kleiner Finger</span>
+        <span><i style="background:var(--f-ring)"></i>Ringfinger</span>
+        <span><i style="background:var(--f-middle)"></i>Mittelfinger</span>
+        <span><i style="background:var(--f-index)"></i>Zeigefinger</span>
+        <span><i style="background:var(--f-thumb)"></i>Daumen</span>
+      </div>
+    </section>
+
+    <section class="panel history" id="history"></section>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+const STORE_KEY = 'zehnfinger.v1';
+const $ = s => document.querySelector(s);
+
+/* ---------- Tastaturlayouts: je Taste Grundzeichen, Umschaltzeichen, Finger ----------
+   Finger: 0-3 links (klein, Ring, Mittel, Zeige), 4-7 rechts (Zeige, Mittel, Ring, klein), 8 Daumen */
+const LAYOUTS = {
+  ch: [
+    '§°0 1+0 2"1 3*2 4ç3 5%3 6&4 7/4 8(5 9)6 0=7 \'?7 ^`7',
+    'qQ0 wW1 eE2 rR3 tT3 zZ4 uU4 iI5 oO6 pP7 üè7 ¨!7',
+    'aA0 sS1 dD2 fF3 gG3 hH4 jJ4 kK5 lL6 öé7 äà7 $£7',
+    '<>0 yY0 xX1 cC2 vV3 bB3 nN4 mM4 ,;5 .:6 -_7'
+  ],
+  de: [
+    '^°0 1!0 2"1 3§2 4$3 5%3 6&4 7/4 8(5 9)6 0=7 ß?7 ´`7',
+    'qQ0 wW1 eE2 rR3 tT3 zZ4 uU4 iI5 oO6 pP7 üÜ7 +*7',
+    'aA0 sS1 dD2 fF3 gG3 hH4 jJ4 kK5 lL6 öÖ7 äÄ7 #\'7',
+    '<>0 yY0 xX1 cC2 vV3 bB3 nN4 mM4 ,;5 .:6 -_7'
+  ]
+};
+const DEAD = new Set(['^', '´', '`', '¨']);
+const FINGER_NAMES = ['linker kleiner Finger', 'linker Ringfinger', 'linker Mittelfinger', 'linker Zeigefinger',
+  'rechter Zeigefinger', 'rechter Mittelfinger', 'rechter Ringfinger', 'rechter kleiner Finger', 'Daumen'];
+
+/* ---------- Übungsmaterial ---------- */
+const WORDS = ('das als lass fall falls all alle da ja aal saal dass kahl ach ' +
+  'die sie er es ein eine einen dem den des der mit auf für von zu im in an aus bei nach über unter vor neben durch ohne gegen um wie wenn weil aber oder doch noch schon auch nur sehr mehr viel viele wenig immer nie oft heute morgen gestern jetzt hier dort nein nicht kein keine alles jeder jede man wir ihr ich du mich dich sich uns euch mein dein sein unser ' +
+  'haben habe hat hatte bin bist sind war waren werden wird wurde kann muss soll will darf mag machen macht gehen geht kommen kommt sehen sieht sagen sagt geben gibt nehmen nimmt finden findet denken lesen liest schreiben spielen lernen lernt arbeiten fahren laufen essen trinken schlafen kaufen sitzen stehen liegen legen fallen fiel helfen hilft lassen halten tragen rufen fragen zeigen leben lieben suchen tippen üben übt drücken fühlen hören glauben wissen kennen zählen öffnen warten bleiben bringen ' +
+  'leise laut lieb leid eile eis idee see fee fies kiel ski seife seide elf elfe lila sessel esel adel edel kiste kasse klasse fass fest feste feld fels flasche ' +
+  'rad rasse rede reise rief ruf ruhe ruder rudel sure kurs kur ufer uralt laser leer lager leder feder erde erle eier ader ariel essig ' +
+  'gold geld gas glas gras gruss hase haus hals heu hell held hilfe hof hohl hügel gurke garage regel segel kugel fluss hafen heilig ' +
+  'tag tat tal tee tier tisch teller teil test tor tour zeit zelt zahl zug ziel zoll zitrone stuhl stadt still stark satz sitz katze kerze herz ' +
+  'wort wolke wald welt weg wasser woche wetter wolle ofen obst ort osten wal kiwi woher wohl ' +
+  'name nase nacht neu nun mann maus milch mond musik morgen minute monat abend arm baum blume ' +
+  'auch acht echt koch kuchen dach buch sache woche nicht licht recht ' +
+  'brot bett bild blatt bunt platz papier park post preis puppe bei braun breit ' +
+  'vogel vater viel vier voll vor von vase villa ' +
+  'äpfel käse küche tür übung brücke müde süss hände länder ähnlich fünf grün über früh spät ' +
+  'quelle quer qual quiz text taxi hexe boxen axt typ yoga pyramide').split(/\s+/).filter(Boolean);
+
+const NOUNS = ('Haus Hand Finger Taste Tastatur Wort Satz Text Zeit Jahr Tag Woche Monat Abend Morgen Nacht Kind Frau Mann Leute Freund Familie Schule Arbeit Stadt Land Dorf Berg See Fluss Wald Baum Blume Garten Weg Strasse Auto Zug Bahn Velo Brot Käse Milch Wasser Kaffee Tee Apfel Birne Suppe Salat Tisch Stuhl Fenster Tür Zimmer Küche Buch Brief Heft Papier Stift Bild Musik Lied Spiel Ball Hund Katze Vogel Pferd Fisch Sonne Regen Schnee Wind Himmel Erde Feuer Licht Farbe Name Frage Antwort Fehler Übung Lektion Ziel Erfolg Geduld Ruhe Glück Freude Idee Plan Uhr Minute Stunde Zahl Geld Preis Markt Laden Post Bank Lehrer Computer Bildschirm Maus Kopf Auge Ohr Nase Mund Arm Bein Herz Rücken Äpfel Ärger Öl Übersicht').split(' ');
+
+const SENTENCES = [
+  'Übung macht den Meister.',
+  'Die Finger ruhen auf der Grundreihe.',
+  'Der linke Zeigefinger liegt auf dem F, der rechte auf dem J.',
+  'Wer heute langsam tippt, tippt morgen schnell und sicher.',
+  'Schau nicht auf die Tasten, sondern auf den Bildschirm.',
+  'Franz jagt im komplett verwahrlosten Taxi quer durch Bayern.',
+  'Zwölf Boxkämpfer jagen Viktor quer über den grossen Sylter Deich.',
+  'Am Morgen trinke ich gerne einen Kaffee mit Milch.',
+  'Im Sommer fahren wir mit dem Zug in die Berge.',
+  'Die Katze schläft auf dem warmen Fensterbrett.',
+  'Kannst du mir bitte das Buch geben?',
+  'Heute ist ein schöner Tag, nicht wahr?',
+  'Wir treffen uns um 18 Uhr am Bahnhof.',
+  'Das Konzert beginnt am 3. Mai um 20:15 Uhr.',
+  'Ein Kilo Äpfel kostet 4.50 Franken.',
+  'Ruhig atmen, locker bleiben und gleichmässig tippen!',
+  'Jeder Fehler ist eine Gelegenheit, etwas zu lernen.',
+  'Der Zug nach Bern fährt von Gleis 7 ab.',
+  'Nach dem Regen kommt die Sonne wieder hervor.',
+  'Lieber zehn Minuten täglich als zwei Stunden pro Woche.',
+  'Meine Grossmutter backt jeden Sonntag einen Zopf.',
+  'Bitte schliessen Sie das Fenster, es zieht.',
+  'Die Schweiz hat vier Landessprachen: Deutsch, Französisch, Italienisch und Rätoromanisch.',
+  'Wie viele Wörter schaffst du in einer Minute?',
+  'Gute Haltung: Rücken gerade, Schultern locker, Handgelenke entspannt.',
+  'Achtung - frisch gestrichen!',
+  'Er sagte: "Das schaffe ich bis morgen."',
+  'Brot, Butter, Käse und Milch; mehr brauchen wir nicht.',
+  'Wann fährt der letzte Bus nach Hause?',
+  'Die Bibliothek ist von Montag bis Freitag geöffnet.',
+  'Mit etwas Geduld wird jede Taste zur Gewohnheit.',
+  'Im Herbst fallen die bunten Blätter von den Bäumen.'
+];
+
+const CUSTOM_SAMPLE = 'Beim Zehnfingersystem hat jeder Finger seine festen Tasten. Am Anfang fühlt sich das langsam an, doch nach einigen Wochen tippst du schneller als je zuvor.';
+
+const LESSONS = [
+  { id: 'l1', keys: 'asdfjklö', title: 'Grundreihe', desc: 'Lege die Finger auf a s d f und j k l ö. Die Daumen ruhen auf der Leertaste.' },
+  { id: 'l2', keys: 'ei', title: 'E und I', desc: 'Mittelfinger nach oben: links zum E, rechts zum I.' },
+  { id: 'l3', keys: 'ru', title: 'R und U', desc: 'Zeigefinger nach oben: links zum R, rechts zum U.' },
+  { id: 'l4', keys: 'gh', title: 'G und H', desc: 'Zeigefinger zur Mitte: links zum G, rechts zum H.' },
+  { id: 'l5', keys: 'tz', title: 'T und Z', desc: 'Zeigefinger schräg nach oben zur Mitte: T und Z.' },
+  { id: 'l6', keys: 'ow', title: 'O und W', desc: 'Ringfinger nach oben: links zum W, rechts zum O.' },
+  { id: 'l7', keys: 'nm', title: 'N und M', desc: 'Rechter Zeigefinger nach unten: N und M.' },
+  { id: 'l8', keys: 'c,', title: 'C und Komma', desc: 'Mittelfinger nach unten: links zum C, rechts zum Komma.' },
+  { id: 'l9', keys: 'bp', title: 'B und P', desc: 'Linker Zeigefinger nach unten zum B, rechter kleiner Finger nach oben zum P.' },
+  { id: 'l10', keys: 'v.', title: 'V und Punkt', desc: 'Linker Zeigefinger zum V, rechter Ringfinger zum Punkt.' },
+  { id: 'l11', keys: 'äü', title: 'Ä und Ü', desc: 'Der rechte kleine Finger streckt sich nach rechts.' },
+  { id: 'l12', keys: 'qxy', title: 'Q, X und Y', desc: 'Die seltenen Buchstaben: kleiner Finger und Ringfinger links.' },
+  { id: 'caps', type: 'caps', title: 'Grossbuchstaben', desc: 'Umschalttaste immer mit der Hand, die den Buchstaben nicht tippt.' },
+  { id: 'num', type: 'num', title: 'Zahlen', desc: 'Von der Grundreihe aus nach oben greifen, danach zurück in die Grundstellung.' },
+  { id: 'punct', type: 'punct', title: 'Satzzeichen', desc: 'Fragezeichen, Ausrufezeichen, Doppelpunkt und Anführungszeichen.' },
+  { id: 'sent', type: 'sent', title: 'Ganze Sätze', desc: 'Alles zusammen in echten Sätzen.' },
+  { id: 'weak', type: 'weak', title: 'Schwachstellen', desc: 'Übt gezielt die Tasten, bei denen du bisher am häufigsten danebengreifst.' },
+  { id: 'custom', type: 'custom', title: 'Eigener Text', desc: 'Füge einen beliebigen Text ein und übe ihn.' }
+];
+const GROUPS = [['Buchstaben', 0, 12], ['Weiterführend', 12, 16], ['Eigene Übungen', 16, 18]];
+
+/* ---------- Speicher ---------- */
+function load() {
+  const d = { layout: 'ch', progress: {}, keys: {}, history: [], custom: CUSTOM_SAMPLE, lesson: null };
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) Object.assign(d, JSON.parse(raw)); } catch (e) {}
+  return d;
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
+let S = load();
+
+/* ---------- Tastatur ---------- */
+let charMap = {};
+function parseRow(s) { return s.split(' ').map(t => ({ base: t[0], shift: t[1], finger: +t[2] })); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function buildKeyboard() {
+  const kb = $('#kb');
+  kb.innerHTML = '';
+  charMap = {};
+  const r = LAYOUTS[S.layout].map(parseRow);
+  const rows = [
+    [...r[0], { label: '⌫', w: 2 }],
+    [{ label: 'Tab', w: 1.5 }, ...r[1], { label: 'Enter', w: 1.5 }],
+    [{ label: 'Feststell', w: 1.75 }, ...r[2], { label: '↵', w: 1.25 }],
+    [{ label: '⇧', w: 1.25, finger: 0, id: 'shiftL' }, ...r[3], { label: '⇧ Umschalt', w: 2.75, finger: 7, id: 'shiftR' }],
+    [{ label: 'Strg', w: 1.25 }, { label: 'Win', w: 1.25 }, { label: 'Alt', w: 1.25 }, { label: '', w: 6.25, finger: 8, id: 'space' },
+     { label: 'AltGr', w: 1.25 }, { label: 'Win', w: 1.25 }, { label: 'Menü', w: 1.25 }, { label: 'Strg', w: 1.25 }]
+  ];
+  for (const row of rows) for (const k of row) {
+    const el = document.createElement('div');
+    el.className = 'key';
+    el.style.gridColumn = 'span ' + Math.round((k.w || 1) * 4);
+    if (k.base !== undefined) {
+      el.dataset.f = k.finger;
+      const isLetter = k.base.toUpperCase() === k.shift && k.base !== k.shift;
+      el.innerHTML = isLetter ? `<span>${esc(k.shift)}</span>` : `<span class="sh">${esc(k.shift)}</span><span>${esc(k.base)}</span>`;
+      if (k.base === 'f' || k.base === 'j') el.classList.add('bump');
+      el._chars = [k.base, k.shift];
+      if (!DEAD.has(k.base) && !charMap[k.base]) charMap[k.base] = { el, finger: k.finger, shift: false };
+      if (!DEAD.has(k.shift) && !charMap[k.shift]) charMap[k.shift] = { el, finger: k.finger, shift: true };
+    } else {
+      el.classList.add('mod');
+      el.textContent = k.label;
+      if (k.finger !== undefined) el.dataset.f = k.finger;
+      if (k.id) el.id = 'k-' + k.id;
+    }
+    kb.appendChild(el);
+  }
+  charMap[' '] = { el: $('#k-space'), finger: 8, shift: false };
+  $('#k-space')._chars = [' '];
+  applyHeatmap();
+}
+
+function lookup(ch) {
+  if (charMap[ch]) return charMap[ch];
+  // Auf der Schweizer Tastatur gibt es Ä, Ö, Ü nur über die Feststelltaste
+  if (S.layout === 'ch' && 'ÄÖÜ'.includes(ch)) return null;
+  const lo = ch.toLowerCase();
+  if (lo !== ch && charMap[lo]) return { ...charMap[lo], shift: true };
+  return null;
+}
+function typeable(ch) { return !!lookup(ch); }
+const fits = s => [...s].every(typeable);
+
+function applyHeatmap() {
+  const on = $('#heat').checked;
+  $('#kb').classList.toggle('heatmap', on);
+  $('#legend').hidden = on;
+  document.querySelectorAll('#kb .key').forEach(el => {
+    el.classList.remove('nodata');
+    el.removeAttribute('title');
+    if (!el._chars) return;
+    let h = 0, m = 0;
+    for (const c of el._chars) {
+      const st = S.keys[c]; if (st) { h += st.h; m += st.m; }
+      const up = c.toUpperCase(); if (up !== c && !el._chars.includes(up) && S.keys[up]) { h += S.keys[up].h; m += S.keys[up].m; }
+    }
+    const total = h + m;
+    if (total < 5) { el.classList.add('nodata'); el.style.setProperty('--heat', 0); el.title = 'Noch zu wenig Daten'; return; }
+    const rate = m / total;
+    el.style.setProperty('--heat', Math.min(1, rate * 4).toFixed(2));
+    el.title = `${Math.round(rate * 100)} % Fehler bei ${total} Versuchen`;
+  });
+}
+
+/* ---------- Textgenerator ---------- */
+const rnd = n => Math.floor(Math.random() * n);
+const pick = a => a[rnd(a.length)];
+const TARGET = 200;
+
+function lettersUpTo(idx) { return LESSONS.slice(0, idx + 1).filter(l => !l.type).map(l => l.keys).join(''); }
+
+function pickWords(pool, avoid) {
+  let w = pick(pool), tries = 0;
+  while (w === avoid && tries++ < 5) w = pick(pool);
+  return w;
+}
+function pseudoWord(allowed, focus) {
+  const len = 2 + rnd(4);
+  let w = '';
+  for (let i = 0; i < len; i++) w += (Math.random() < 0.5 && focus.length) ? pick(focus) : pick(allowed);
+  if (focus.length && ![...w].some(c => focus.includes(c))) w = w.slice(0, -1) + pick(focus);
+  return w;
+}
+function fillWords(tokens, nextToken) {
+  let len = tokens.join(' ').length, last = '';
+  while (len < TARGET) {
+    const t = nextToken(last);
+    tokens.push(t); last = t; len += t.length + 1;
+  }
+  return tokens.join(' ');
+}
+
+function genLetters(idx) {
+  const lesson = LESSONS[idx];
+  const allowedAll = lettersUpTo(idx);
+  const allowed = [...allowedAll].filter(c => /\p{L}/u.test(c));
+  const focus = [...lesson.keys].filter(c => /\p{L}/u.test(c));
+  const puncts = [...lesson.keys, ...allowedAll].filter(c => c === ',' || c === '.');
+  const ok = w => [...w].every(c => allowed.includes(c));
+  const pool = WORDS.filter(ok);
+  const poolNew = pool.filter(w => [...w].some(c => focus.includes(c)));
+  const tokens = [];
+  // Einstieg: neue Tasten wiederholen
+  for (const c of focus) tokens.push(c.repeat(3));
+  for (let i = 0; i < 3; i++) {
+    let s = ''; for (let j = 0; j < 4; j++) s += pick(j % 2 ? focus : allowed);
+    tokens.push(s);
+  }
+  return fillWords(tokens, last => {
+    const r = Math.random();
+    let w;
+    if (poolNew.length >= 4 && r < 0.6) w = pickWords(poolNew, last);
+    else if (pool.length >= 8 && r < 0.8) w = pickWords(pool, last);
+    else w = pseudoWord(allowed, focus);
+    if (puncts.includes(',') && Math.random() < 0.12) w += ',';
+    else if (puncts.includes('.') && Math.random() < 0.1) w += '.';
+    return w;
+  });
+}
+
+function genCaps() {
+  const nouns = NOUNS.filter(fits);
+  return fillWords([], last => Math.random() < 0.5 ? pickWords(nouns, last) : pickWords(WORDS, last));
+}
+function genNumbers() {
+  const drill = '1qa 2ws 3ed 4rf 5tg 6zh 7uj 8ik 9ol 0pö';
+  const nouns = NOUNS.filter(fits);
+  return fillWords([drill], () => {
+    const r = Math.random();
+    if (r < 0.3) return String(1 + rnd(99)) + ' ' + pick(nouns);
+    if (r < 0.45) return String(1900 + rnd(130));
+    if (r < 0.6) return String(rnd(10000));
+    return pick(WORDS);
+  });
+}
+function genSentences(filter) {
+  const pool = SENTENCES.filter(s => fits(s) && (!filter || filter(s)));
+  const out = []; let len = 0, last = '';
+  while (len < TARGET) { const s = pickWords(pool, last); out.push(s); last = s; len += s.length + 1; }
+  return out.join(' ');
+}
+function weakChars() {
+  return Object.entries(S.keys)
+    .filter(([c, st]) => c !== ' ' && st.h + st.m >= 5 && st.m > 0 && typeable(c))
+    .map(([c, st]) => [c, st.m / (st.h + st.m)])
+    .sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+}
+function genWeak() {
+  const weak = weakChars();
+  if (!weak.length) return null;
+  const all = [...WORDS, ...NOUNS];
+  const pool = all.filter(w => weak.some(c => w.includes(c)) && [...w].every(typeable));
+  const tokens = weak.map(c => (c + c + c));
+  return fillWords(tokens, last => pool.length && Math.random() < 0.8 ? pickWords(pool, last) : pick(weak).repeat(2) + pick(WORDS).slice(0, 3));
+}
+function normalizeCustom(raw) {
+  let t = raw.replace(/[“”„«»]/g, '"').replace(/[‘’‚‹›]/g, "'").replace(/[–—]/g, '-').replace(/…/g, '...').replace(/\s+/g, ' ').trim();
+  if (S.layout === 'ch') t = t.replace(/ß/g, 'ss');
+  const removed = new Set();
+  t = [...t].filter(c => { if (typeable(c)) return true; removed.add(c); return false; }).join('').replace(/ {2,}/g, ' ').trim();
+  return { text: t, removed: [...removed] };
+}
+
+function generate(lesson) {
+  const idx = LESSONS.indexOf(lesson);
+  let text;
+  switch (lesson.type) {
+    case 'caps': text = genCaps(); break;
+    case 'num': text = genNumbers(); break;
+    case 'punct': text = genSentences(s => /[?!:;"-]/.test(s)); break;
+    case 'sent': text = genSentences(); break;
+    case 'weak': text = genWeak(); break;
+    case 'custom': {
+      const n = normalizeCustom(S.custom || '');
+      $('#customNote').textContent = n.removed.length ? `Diese Zeichen gibt es auf der gewählten Tastatur nicht direkt und wurden entfernt: ${n.removed.join(' ')}` : '';
+      text = n.text; break;
+    }
+    default: text = genLetters(idx);
+  }
+  // Nur Zeichen, die auf dem gewählten Layout ohne AltGr erreichbar sind
+  if (text) text = [...text].filter(typeable).join('').replace(/ {2,}/g, ' ').trim();
+  return text;
+}
+
+/* ---------- Übungsablauf ---------- */
+const T = { lesson: null, text: '', pos: 0, errors: 0, start: 0, errAt: new Set(), done: false, timer: null, spans: [] };
+
+function startExercise(lesson) {
+  clearInterval(T.timer);
+  Object.assign(T, { lesson, pos: 0, errors: 0, start: 0, errAt: new Set(), done: false, timer: null });
+  S.lesson = lesson.id; save();
+  $('#lessonTitle').textContent = lesson.title;
+  $('#lessonDesc').textContent = lesson.desc;
+  $('#customPanel').hidden = lesson.type !== 'custom';
+  if (lesson.type === 'custom') $('#customText').value = S.custom || '';
+  $('#result').hidden = true;
+  T.text = generate(lesson) || '';
+  if (!T.text) {
+    $('#text').textContent = lesson.type === 'weak'
+      ? 'Noch zu wenige Daten. Übe zuerst ein paar Lektionen, dann stellt dir diese Übung deine schwierigsten Tasten zusammen.'
+      : 'Füge oben einen Text ein und klicke auf «Diesen Text üben».';
+  } else renderText();
+  $('#startHint').hidden = !T.text;
+  renderLessons();
+  highlight();
+  updateStats();
+}
+
+function renderText() {
+  const box = $('#text');
+  box.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  T.spans = [...T.text].map(ch => {
+    const s = document.createElement('span');
+    s.className = 'c' + (ch === ' ' ? ' sp' : '');
+    s.textContent = ch;
+    frag.appendChild(s);
+    return s;
+  });
+  box.appendChild(frag);
+  box.scrollTop = 0;
+  T.spans[0]?.classList.add('cur');
+}
+
+function highlight() {
+  document.querySelectorAll('.key.next').forEach(el => el.classList.remove('next'));
+  document.querySelectorAll('.fg.on').forEach(el => el.classList.remove('on'));
+  const hint = $('#fingerHint');
+  if (!T.text || T.done) { hint.innerHTML = T.done ? 'Übung beendet' : ''; return; }
+  const ch = T.text[T.pos];
+  const k = lookup(ch);
+  if (!k) { hint.textContent = ''; return; }
+  k.el.classList.add('next');
+  const fingers = [k.finger];
+  let extra = '';
+  if (k.shift) {
+    const right = k.finger <= 3;
+    $(right ? '#k-shiftR' : '#k-shiftL').classList.add('next');
+    fingers.push(right ? 7 : 0);
+    extra = ` <small>+ Umschalttaste mit dem ${right ? 'rechten' : 'linken'} kleinen Finger</small>`;
+  }
+  fingers.forEach(f => document.querySelectorAll(`.fg[data-f="${f}"]`).forEach(el => el.classList.add('on')));
+  const label = ch === ' ' ? 'Leertaste' : `«${esc(ch)}»`;
+  const name = FINGER_NAMES[k.finger];
+  hint.innerHTML = `<span class="dot fg" data-f="${k.finger}" style="background:var(--fc)"></span>${label}: ${name.charAt(0).toUpperCase() + name.slice(1)}${extra}`;
+}
+
+function fmtTime(sec) { const s = Math.floor(sec); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function metrics() {
+  const sec = T.start ? (performance.now() - T.start) / 1000 : 0;
+  const cpm = sec > 1 ? Math.round(T.pos / (sec / 60)) : 0;
+  const acc = T.pos + T.errors ? (T.pos / (T.pos + T.errors)) * 100 : 100;
+  return { sec, cpm, acc };
+}
+function updateStats() {
+  if (T.done) return;
+  const m = metrics();
+  $('#sCpm').textContent = m.cpm;
+  $('#sAcc').textContent = (m.acc >= 99.95 ? 100 : m.acc.toFixed(1)) + ' %';
+  $('#sErr').textContent = T.errors;
+  $('#sTime').textContent = fmtTime(m.sec);
+  $('#bar').style.width = T.text ? (T.pos / T.text.length * 100) + '%' : '0';
+}
+
+function flashWrong(ch) {
+  const k = lookup(ch);
+  if (!k) return;
+  k.el.classList.add('wrong');
+  setTimeout(() => k.el.classList.remove('wrong'), 250);
+}
+
+function onKey(e) {
+  if (e.target.closest && e.target.closest('input, textarea, select')) return;
+  if (e.ctrlKey || e.metaKey || (e.altKey && !e.getModifierState('AltGraph'))) return;
+  if (e.key === 'Escape') { e.preventDefault(); if (T.lesson) startExercise(T.lesson); return; }
+  if (T.done) { if (e.key === 'Enter') { e.preventDefault(); goNext(); } return; }
+  if (!T.text || e.key.length !== 1) return;
+  e.preventDefault();
+  if (!T.start) { T.start = performance.now(); T.timer = setInterval(updateStats, 250); $('#startHint').hidden = true; }
+  const exp = T.text[T.pos];
+  const st = S.keys[exp] || (S.keys[exp] = { h: 0, m: 0 });
+  const span = T.spans[T.pos];
+  if (e.key === exp) {
+    st.h++;
+    span.classList.remove('cur', 'miss');
+    span.classList.add(T.errAt.has(T.pos) ? 'err' : 'ok');
+    T.pos++;
+    if (T.pos >= T.text.length) { finish(); return; }
+    const next = T.spans[T.pos];
+    next.classList.add('cur');
+    const box = $('#text');
+    if (next.offsetTop - box.scrollTop > box.clientHeight * 0.6) box.scrollTop = next.offsetTop - box.clientHeight * 0.3;
+  } else {
+    if (!T.errAt.has(T.pos)) st.m++;
+    T.errors++;
+    T.errAt.add(T.pos);
+    span.classList.add('miss');
+    flashWrong(e.key);
+  }
+  highlight();
+  updateStats();
+}
+
+function starsFor(acc) { return acc >= 98 ? 3 : acc >= 95 ? 2 : acc >= 90 ? 1 : 0; }
+function starHtml(n) { return '<b>' + '★'.repeat(n) + '</b>' + '★'.repeat(3 - n); }
+
+function finish() {
+  const m = metrics();
+  T.done = true;
+  clearInterval(T.timer);
+  updateStatsFinal(m);
+  const stars = starsFor(m.acc);
+  const p = S.progress[T.lesson.id] || { stars: 0, best: 0 };
+  const newBest = m.cpm > p.best && stars > 0;
+  if (stars > 0) S.progress[T.lesson.id] = { stars: Math.max(p.stars, stars), best: Math.max(p.best, m.cpm) };
+  S.history.push({ t: Date.now(), l: T.lesson.id, cpm: m.cpm, acc: Math.round(m.acc * 10) / 10 });
+  S.history = S.history.slice(-100);
+  save();
+
+  $('#rStars').innerHTML = starHtml(stars);
+  $('#rTitle').textContent = stars === 3 ? 'Ausgezeichnet!' : stars === 2 ? 'Gut gemacht!' : stars === 1 ? 'Geschafft!' : 'Noch einmal üben';
+  $('#rCpm').textContent = m.cpm;
+  $('#rWpm').textContent = Math.round(m.cpm / 5);
+  $('#rAcc').textContent = m.acc.toFixed(1) + ' %';
+  $('#rErr').textContent = T.errors;
+  const passed = m.acc >= 95;
+  $('#rMsg').textContent = !passed
+    ? 'Ziel für die nächste Lektion sind mindestens 95 % Genauigkeit. Tippe etwas langsamer und achte auf die richtigen Finger.'
+    : (newBest ? `Neuer Bestwert in dieser Lektion: ${m.cpm} Anschläge pro Minute.` : 'Weiter so! Ab 98 % Genauigkeit gibt es drei Sterne.');
+  $('#rNext').firstChild.textContent = passed && nextLesson() ? 'Nächste Lektion ' : 'Neuer Text ';
+  $('#result').hidden = false;
+  highlight();
+  renderLessons();
+  renderHistory();
+  applyHeatmap();
+}
+function updateStatsFinal(m) {
+  $('#sCpm').textContent = m.cpm;
+  $('#sAcc').textContent = m.acc.toFixed(1) + ' %';
+  $('#sErr').textContent = T.errors;
+  $('#sTime').textContent = fmtTime(m.sec);
+  $('#bar').style.width = '100%';
+}
+function nextLesson() {
+  const i = LESSONS.indexOf(T.lesson);
+  const n = LESSONS[i + 1];
+  return n && n.type !== 'weak' && n.type !== 'custom' ? n : null;
+}
+function goNext() {
+  const m = T.pos + T.errors ? T.pos / (T.pos + T.errors) * 100 : 0;
+  const n = nextLesson();
+  startExercise(m >= 95 && n ? n : T.lesson);
+}
+
+/* ---------- Seitenleiste & Verlauf ---------- */
+function recommended() {
+  return LESSONS.find(l => !l.type || ['caps', 'num', 'punct', 'sent'].includes(l.type) ? (S.progress[l.id]?.stars || 0) < 2 : false) || LESSONS[15];
+}
+function renderLessons() {
+  const nav = $('#lessons');
+  const rec = recommended();
+  nav.innerHTML = '';
+  for (const [title, a, b] of GROUPS) {
+    const g = document.createElement('div');
+    g.className = 'group-title';
+    g.textContent = title;
+    nav.appendChild(g);
+    LESSONS.slice(a, b).forEach((l, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'lesson' + (T.lesson === l ? ' active' : '') + (rec === l ? ' recommended' : '');
+      const p = S.progress[l.id];
+      const caps = l.keys ? `<span class="caps">${[...l.keys].map(c => `<span class="cap">${esc(c)}</span>`).join('')}</span>` : '';
+      const sub = rec === l ? '<span class="sub">Empfohlen</span>' : '';
+      const showMeta = l.type !== 'weak' && l.type !== 'custom';
+      btn.innerHTML = `<span class="num">${l.type === 'weak' ? '◎' : l.type === 'custom' ? '✎' : a + i + 1}</span>
+        <span><span class="name">${esc(l.title)}</span>${caps}${sub}</span>
+        <span class="meta">${showMeta ? `<span class="stars">${starHtml(p?.stars || 0)}</span><br>${p?.best ? p.best + ' A/min' : ''}` : ''}</span>`;
+      btn.addEventListener('click', () => { btn.blur(); startExercise(l); });
+      nav.appendChild(btn);
+    });
+  }
+}
+let resetArmed = false;
+function renderHistory() {
+  const h = S.history;
+  const box = $('#history');
+  if (!h.length) { box.innerHTML = '<span>Noch keine abgeschlossene Übung. Deine Ergebnisse erscheinen hier und bleiben in diesem Browser gespeichert.</span>'; return; }
+  const last5 = h.slice(-5);
+  const avg = Math.round(last5.reduce((s, x) => s + x.cpm, 0) / last5.length);
+  const avgAcc = (last5.reduce((s, x) => s + x.acc, 0) / last5.length).toFixed(1);
+  const best = Math.max(...h.map(x => x.cpm));
+  box.innerHTML = `<span>Übungen: <strong>${h.length}</strong></span>
+    <span>Schnitt der letzten ${last5.length}: <strong>${avg} A/min</strong> bei <strong>${avgAcc} %</strong></span>
+    <span>Bestwert: <strong>${best} A/min</strong></span>
+    <button class="reset${resetArmed ? ' confirm' : ''}" id="reset" type="button">${resetArmed ? 'Wirklich alles löschen?' : 'Fortschritt zurücksetzen'}</button>`;
+  $('#reset').addEventListener('click', () => {
+    if (!resetArmed) { resetArmed = true; renderHistory(); setTimeout(() => { resetArmed = false; renderHistory(); }, 4000); return; }
+    resetArmed = false;
+    S.progress = {}; S.keys = {}; S.history = []; save();
+    renderLessons(); renderHistory(); applyHeatmap();
+  });
+}
+
+/* ---------- Start ---------- */
+$('#layout').value = S.layout;
+$('#layout').addEventListener('change', e => { S.layout = e.target.value; save(); buildKeyboard(); e.target.blur(); if (T.lesson) startExercise(T.lesson); });
+$('#heat').addEventListener('change', e => { applyHeatmap(); e.target.blur(); });
+$('#newText').addEventListener('click', e => { e.currentTarget.blur(); if (T.lesson) startExercise(T.lesson); });
+$('#useCustom').addEventListener('click', e => { e.currentTarget.blur(); S.custom = $('#customText').value; save(); startExercise(T.lesson); });
+$('#rAgain').addEventListener('click', e => { e.currentTarget.blur(); startExercise(T.lesson); });
+$('#rNext').addEventListener('click', e => { e.currentTarget.blur(); goNext(); });
+document.addEventListener('keydown', onKey);
+
+buildKeyboard();
+renderHistory();
+startExercise(LESSONS.find(l => l.id === S.lesson) || recommended());
+})();
+</script>
